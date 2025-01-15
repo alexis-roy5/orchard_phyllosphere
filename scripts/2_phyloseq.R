@@ -140,6 +140,9 @@ ps_16S <- phyloseq(
 
 saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pommier_sophie/data/16s_subset/5_figures_IP34/ps_16S.rds" )
 
+##########################################################
+##########################################################
+
 ps_16S_ctrl <- phyloseq(
   tax_table(taxa_16S_ctrl),
   otu_table(seqtab_16S_ctrl_filt, taxa_are_rows = FALSE),
