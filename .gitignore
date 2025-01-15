@@ -22,3 +22,4 @@ ILL_pipelines/
 *fastqc*html
 *fastqc.zip
 *fastqc/
+.Rproj.user

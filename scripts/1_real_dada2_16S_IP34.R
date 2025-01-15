@@ -153,7 +153,8 @@ dim(seqtab); dim(seqtab.nochim) # 174 27683
 #table(nchar(getSequences(seqtab.nochim))) %>% sort %>% plot # distrib of seq len
 
 # Writeout
-write_rds(seqtab.nochim, file.path(path.tax,'seqtab.RDS'))
+write_rds(seqtab.nochim, file.path(path.tax,'seqtab.rds'), compress = "gz")
+# ajouter argument de compression et mettre "RDS" en minuscule
 
 ### TRACK PIPELINE READS
 track_change <- track_dada(out.N = out.N, out = out,
@@ -178,20 +179,20 @@ if(!dir.exists(path.reference)) dir.create(path.reference)
 
 
 # il faut uplaod les databases dans IP34 avec les commandes UNIX
-# wget -P ./2023/data/16S/reference_database "https://zenodo.org/records/14169026/files/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1"
-# wget -P ./2023/data/16S/reference_database "https://zenodo.org/records/14169026/files/silva_v138.2_assignSpecies.fa.gz?download=1"
+# wget -0 ./2023/data/16S/reference_database/silva_nr99_v138.2_toGenus_trainset.fa.gz "https://zenodo.org/records/14169026/files/silva_nr99_v138.2_toGenus_trainset.fa.gz?download=1"
+# wget -0 ./2023/data/16S/reference_database/silva_v138.2_assignSpecies.fa.gz "https://zenodo.org/records/14169026/files/silva_v138.2_assignSpecies.fa.gz?download=1"
 
 taxa <- assignTaxonomy(
   seqtab.nochim,
-  file.path(path_data,'reference_database/silva_v138.2_assignSpecies.fa.gz?download=1'), 
+  file.path(path_data,"reference_database/silva_v138.2_assignSpecies.fa.gz"), 
                           multithread = ncores, tryRC = TRUE, verbose = TRUE)
  
 taxa_species <- assignSpecies(
   taxa, 
-  file.path(path_data, "reference_database/silva_v138.2_assignSpecies.fa.gz?download=1"), 
+  file.path(path_data, "reference_database/silva_v138.2_assignSpecies.fa.gz"), 
   verbose = TRUE, tryRC = TRUE, n = 20000)
 
-write_rds(taxa, file.path(path.tax, 'taxonomy.RDS'))
-write_rds(taxa_species, file.path(path.tax, 'taxonomy_species.RDS'))
+write_rds(taxa, file.path(path.tax, 'taxonomy.rds'), compress = "gz")
+write_rds(taxa_species, file.path(path.tax, 'taxonomy_species.rds'), compress = "gz")
 
 
