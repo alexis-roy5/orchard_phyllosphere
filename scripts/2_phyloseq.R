@@ -72,7 +72,7 @@ asv_to_fasta <- function(seqtab, path.out) {
 # Setup ###
 ############
 
-setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pommier_sophie")
+setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/")
 
 dna.path <- './data/16s_subset/4_taxonomy_IP34'
 
@@ -125,6 +125,15 @@ seqtab_16S_ctrl_filt <- remove_ultra_rare(seqtab_16S_ctrl, taxa_16S_ctrl, 10) # 
 dim(seqtab_16S_sam); dim(seqtab_16S_sam_filt); dim(taxa_16S_sam)
 dim(seqtab_16S_ctrl); dim(seqtab_16S_ctrl_filt); dim(taxa_16S_ctrl)
 
+
+# Finding the sample that are near-empty
+rownames1 <- rownames(seqtab_16S_sam) 
+rownames2 <- rownames(seqtab_16S_sam_filt)
+
+  setdiff(rownames1, rownames2) %>% 
+    cat() # Print results
+
+
 # Add sequencing effort and dna concentration to metadata
 dna_16S <- Sys.glob(file.path(dna.path,'CERMO_*16s*.xlsx')) %>% parse_CERMO_xlsx()
 meta_samples_16S <- add_seq_depth(seqtab_16S_sam_filt, meta_samples, dna_16S)
@@ -138,7 +147,7 @@ ps_16S <- phyloseq(
   sample_data(samples)
 )
 
-saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pommier_sophie/data/16s_subset/5_figures_IP34/ps_16S.rds" )
+saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/out/ps_16S.rds" )
 
 ##########################################################
 ##########################################################

@@ -9,7 +9,7 @@ library(pacman)
 p_load(dada2, tidyverse, Biostrings, ShortRead, parallel, phyloseq)
 
  
-setwd("/home/def-ilafores/analysis/apple_tree_data") # changer apple_tree_data pour le dossier
+setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # changer apple_tree_data pour le dossier
 # set le working directory dans IP34
 
 # CONFIG 
