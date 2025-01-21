@@ -97,9 +97,15 @@ samples <- column_to_rownames(meta, "unique")
 # FAIRE UNE FONCTION
 
   # adding DNA concetration to the meatadata
-  DNA_raw <- read_excel("./data/16s_subset/4_taxonomy_IP34/Verger_2023_1.xlsx", sheet = "Biomol")
+  DNA_meta_raw <- read_excel("./data/16s_subset/4_taxonomy_IP34/Verger_2023_1.xlsx", sheet = "Biomol")
   
-   DNA_raw_mat <- matrix(DNA_raw$sample,DNA_raw$`ng/ul`)
+  DNA_meta <- DNA_raw %>%
+    select(Sample = sample, Concentration = `ng/ul`) %>%
+    as.matrix()
+  
+  cbind(DNA_meta, samples)
+
+  
   
 #########
 # 16S ####

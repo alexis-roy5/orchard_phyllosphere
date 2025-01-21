@@ -13,9 +13,9 @@ FWD <- "CTTGGTCATTTAGAGGAAGTAA"
 REV <- "GCTGCGTTCTTCATCGATGC"
 
 ncores <- 24
-path_data <- paste0('./2023/data/ITS',barcode)
+path_data <- paste0('./2023/data/',barcode)
 path_raw <- paste0(path_data, '/0_raw')
-if(!dir.exists("0_raw")) message("create.directory.'/0_raw'")
+if(!dir.exists(path_raw)) message("create.directory.'/0_raw'")
 
 fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE))
 fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
@@ -35,6 +35,8 @@ out.N <- filterAndTrim(fnFs, fnFs.filtN,
                          rm.lowcomplex = TRUE, # added because of https://github.com/benjjneb/dada2/issues/2045#issuecomment-2452299127
                          maxN = 0, 
                          multithread = ncores)
+
+
 #head(out.N)
 
 ###########################
