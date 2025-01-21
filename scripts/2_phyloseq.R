@@ -93,6 +93,14 @@ ctrl.names <- meta_ctrl$unique
 
 samples <- column_to_rownames(meta, "unique") 
 
+
+# FAIRE UNE FONCTION
+
+  # adding DNA concetration to the meatadata
+  DNA_raw <- read_excel("./data/16s_subset/4_taxonomy_IP34/Verger_2023_1.xlsx", sheet = "Biomol")
+  
+   DNA_raw_mat <- matrix(DNA_raw$sample,DNA_raw$`ng/ul`)
+  
 #########
 # 16S ####
 ###########
@@ -126,25 +134,30 @@ dim(seqtab_16S_sam); dim(seqtab_16S_sam_filt); dim(taxa_16S_sam)
 dim(seqtab_16S_ctrl); dim(seqtab_16S_ctrl_filt); dim(taxa_16S_ctrl)
 
 
-# Finding the sample that are near-empty
-rownames1 <- rownames(seqtab_16S_sam) 
-rownames2 <- rownames(seqtab_16S_sam_filt)
+  # Finding the sample that are near-empty
+  rownames1 <- rownames(seqtab_16S_sam) 
+  rownames2 <- rownames(seqtab_16S_sam_filt)
+  
+    setdiff(rownames1, rownames2) %>% 
+      cat() # Print results
 
-  setdiff(rownames1, rownames2) %>% 
-    cat() # Print results
 
+# Add dna concentration to metadata
 
-# Add sequencing effort and dna concentration to metadata
-dna_16S <- Sys.glob(file.path(dna.path,'CERMO_*16s*.xlsx')) %>% parse_CERMO_xlsx()
-meta_samples_16S <- add_seq_depth(seqtab_16S_sam_filt, meta_samples, dna_16S)
-meta_ctrl_16S <- add_seq_depth(seqtab_16S_ctrl_filt, meta_controls, dna_16S)
-### avoir la concentration d'ADN pour un plus ###
+meta_samples_16S <- mutate(samples, )
+# avoir la concentration d'ADN pour un plus 
 
 # Phyloseq object
 ps_16S <- phyloseq(
   tax_table(taxa_16S_sam),
   otu_table(seqtab_16S_sam_filt, taxa_are_rows = FALSE),
   sample_data(samples)
+)
+
+ps_ITS <- phyloseq(
+  tax_table(taxa_ITS_sam),
+  otu_table(seqtab_ITS_sam_filt, taxa_are_rows = FALSE),
+  sample_data(meta_samples_ITS)
 )
 
 saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/out/ps_16S.rds" )
@@ -264,6 +277,12 @@ saveRDS(ps_ctrl.ls, file.path(urbanbio.path,'data/ps_ctrl.ls.rds'))
 # //DEV
 # Decontamination DECONTAM
 # https://benjjneb.github.io/decontam/vignettes/decontam_intro.html
+
+
+
+
+
+
 ps_16S_load <- ps_16S %>%
   prune_samples(sample_data(.)$bacterial_load>0, .)
 contam_freq<- ps_16S_load %>% 
