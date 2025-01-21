@@ -8,11 +8,27 @@
 library(pacman)
 p_load(dada2, tidyverse, Biostrings, ShortRead, parallel, phyloseq)
 
- 
-setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # changer apple_tree_data pour le dossier
-# set le working directory dans IP34
+## voir les read counts avec un fichier de counts à partir du terminal ##
+setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/data/16s_subset/0_raw")
+read_count <- read_tsv("read_counts.tsv")
+filtered_RC <- filter(read_count, grepl("R1", File))
+under1000_RC <- filter(filtered_RC, Read_Count < 10000)
+
+
+hist <- ggplot(under1000_RC) +
+  geom_histogram(aes(x = Read_Count), bins = 50) +
+  labs(x= "Read counts", y = "Frequency")
+hist
+
+# range of counts
+range_RC <- summary(filtered_RC)
+range_RC_1000 <- summary(under1000_RC)
 
 # CONFIG 
+
+setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # changer orchard_phyllosphere pour le dossier
+# set le working directory dans IP34
+
 barcode <- '16S'
 FWD <- "AACMGGATTAGATACCCKG" # séquence des primers
 REV <- "AGGGTTGCGCTCGTTG"

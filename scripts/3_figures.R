@@ -12,11 +12,21 @@ library(cowplot)
 
 setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere")
 
-ps_16S
+ps_16S <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_16S.rds")
+
+# preparing the rarefaction curve
+otu_matrix <- as(otu_table(ps_16S), "matrix")
+otu_matrix_t <- t(otu_matrix)
+
+# rarefaction curve
+rarecurve(otu_matrix_t, step = 50, label = FALSE, cex = 0.5, xlim = c(0, 10000))
 
 # raréfaction 
 ps.rarefied = rarefy_even_depth(ps_16S, rngseed=1, sample.size=0.9*min(sample_sums(ps_16S)), replace=F)
 # 0,9: pour réchantilloner le petit sampling. 
+
+
+
 
 # faire fondre l'objet phyloseq
 phylo.df <- psmelt(ps_16S) # pour comparaison
@@ -60,7 +70,7 @@ richness.shannon.df <- phylo_with_rel_abundance %>%
                                    -RelativeAbundance * log(RelativeAbundance), 
                                    0)) %>%  # Calculate each p_i * log(p_i) term
   summarise(
-    ShannonIndex = sum(ShannonComponent),     # Summarize Shannon components
+    ShannonIndex = sum(ShannonComponent),  # Summarize Shannon components
     expShannonIndex = exp(sum(ShannonIndex)), 
     Richness = dplyr::first(Richness),    # Preserve pre-calculated Richness
     time = dplyr::first(time),            # Preserve 'time'
