@@ -6,11 +6,11 @@ doc/
 logs/
 *.RDS
 *.log
-*.fa
-*.fa.gz
-*.fasta
-*.fastq
-*.fastq.gz
+*.fa*
+*.fa.gz*
+*.fasta*
+*.fastq*
+*.fastq.gz*
 *.tgz
 *.RData
 *.Rhistory
@@ -23,3 +23,4 @@ ILL_pipelines/
 *fastqc.zip
 *fastqc/
 .Rproj.user
+.Rapp.history
