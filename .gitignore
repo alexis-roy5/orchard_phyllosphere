@@ -4,7 +4,6 @@ bak/
 *.bak
 doc/
 logs/
-*.RDS
 *.log
 *.fa*
 *.fa.gz*
