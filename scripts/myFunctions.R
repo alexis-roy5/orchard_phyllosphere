@@ -52,32 +52,64 @@ run_cutadapt <- function(i) {
 ### READS TRACKING
 getN <- function(x) sum(getUniques(x))
 
+transform_df <- function(object) { 
+  require('dplyr')
+  as.data.frame(object) %>% # transform an object/vector into a data.frame 
+    rownames_to_column('Sample') # to perform the left_join afterwards
+}
+
+insert_middle <- function(original, insert, position) {
+  require('tidyverse')
+  str_c(str_sub(original, 1, position), insert, str_sub(original, position + 1, -1)) 
+}
+
+# original: The original string where we want to insert another string.
+# insert: The string to inserted.
+# position: The index (1-based) where the insert string will be added.
+
+
 track_dada <- function(out.N, out,
                        dadaFs, dadaRs,
                        mergers,
                        seqtab.nochim) {
+  require(dplyr, tibble, tidyr)
   
-  track <- cbind(out.N, out[,2], 
-                 sapply(dadaFs, getN), 
-                 sapply(dadaRs, getN), 
-                 sapply(mergers, getN),
-                 rowSums(seqtab.nochim)) 
-  # trouver le nombre de read unique -> ASVs
+  out.N <- transform_df(out.N) # transform into data.frame
+  out <- transform_df(out) %>% select(1,3) # selecting the 'Sample' and 'read.out' columns
   
-  colnames(track) <- c("input", "removeNs", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
-  rownames(track) <- sample.names
+  go.1 <- out.N %>%
+    left_join(out, by = "Sample") %>%
+    mutate(Sample = sub(insert_middle("-_.*$", barcode, 1), "", Sample)) %>% # enlever tout après ex: -ITS*
+    mutate(Sample = paste0(year, '-', Sample)) # ajouter l'année
+  
+  # transform each variable
+  go.2 <- transform_df(sapply(dadaFs, getN)) 
+  go.3 <- transform_df(sapply(dadaRs, getN)) 
+  go.4 <- transform_df(sapply(mergers_pooled, getN))
+  go.5 <- transform_df(rowSums(seqtab.nochim))
+  
+  # combining each object 'go.X' to make a big table
+  track <- left_join(go.1, go.2, by = "Sample") %>%
+    left_join(., go.3, by = "Sample") %>% 
+    left_join(., go.4, by = "Sample") %>% 
+    left_join(., go.5, by = "Sample") %>% 
+    replace(., is.na(.), 0)
+  
+  colnames(track) <- c("Sample", "input", "removeNs", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+  
+ # View result
   
   track %>% data.frame %>% 
-    rownames_to_column('Sample') %>% 
     tibble %>% 
-    filter(filtered>10) %>% 
-    mutate(lost_Ns = (input-removeNs)/input,
-           lost_filt = (removeNs-filtered)/removeNs,
-           lost_noise = (filtered-denoisedR)/filtered,
-           lost_merged = (denoisedR-merged)/denoisedR, # Proportion of reads lost to merging
-           prop_chimera = (merged-nonchim)/merged) %>% 
-    pivot_longer(where(is.numeric), names_to = 'variable', values_to = 'values') 
+    mutate(N_filtering = (input-removeNs)/input,
+           Quality_filtering = (removeNs-filtered)/removeNs,
+           Denoising = (filtered-denoisedR)/filtered,
+           Reads_merging = (denoisedR-merged)/denoisedR, # Proportion of reads lost to merging
+           Bimera_removal = (merged-nonchim)/merged) %>% 
+    pivot_longer(where(is.numeric), names_to = 'variable', values_to = 'values') %>% 
+    mutate_all(~ ifelse(is.nan(.), 0, .)) # régler le problème des divsions par 0
 }
+
 
 
 ###############
@@ -85,12 +117,16 @@ track_dada <- function(out.N, out,
 #################
 
 plot_track_change <- function(track_change) {
-  change_vars <- c('prop_chimera', 'lost_merged', 'lost_noise', 'lost_filt', 'lost_Ns')
+  require(dplyr, ggplot2)
+  
+  change_vars <- c('Bimera_removal', 'Reads_merging', 'Denoising', 'Quality_filtering', 'N_filtering')
+  
   track_change %>% 
     filter(variable %in% change_vars) %>% 
     mutate(variable = factor(variable, level = change_vars)) %>% 
     ggplot(aes(y = variable, x = values)) +
-    geom_jitter() + theme_minimal() # overall very low chimeric rate
+    geom_boxplot() + theme_minimal() +
+    labs(title = 'Proportion of reads lost at a specific pipeline step.')
 }
 
 topTaxa <- function(psmelt, taxLvl, topN) {

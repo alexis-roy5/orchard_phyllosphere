@@ -1,26 +1,30 @@
 #ITS
 #  ml StdEnv/2023 r/4.4.0 mugqic/cutadapt/2.10
+setwd("/home/def-ilafores/analysis/orchard_phyllosphere")
+
 library(pacman)
 p_load(dada2, tidyverse, Biostrings, ShortRead, parallel)
-source('scripts/myFunctions.R')
-source('scripts/mergePairsRescue.R')
+source('./scripts/myFunctions.R')
+source('./scripts/mergePairsRescue.R')
 
-setwd("/home/def-ilafores/analysis/orchard_phyllosphere")
+
 
 # CONFIG
 barcode <- 'ITS'
+year <- '2023'
 FWD <- "CTTGGTCATTTAGAGGAAGTAA" 
 REV <- "GCTGCGTTCTTCATCGATGC"
 
-ncores <- 24
+ncores <- 48
 path_data <- paste0('./2023/data/',barcode)
 path_raw <- paste0(path_data, '/0_raw')
-if(!dir.exists(path_raw)) message("create.directory.'/0_raw'")
+if(!dir.exists(path_data)) message("create.directory.'/0_raw'")
 
-fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE))
+fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE)) # change ME to your path for RAW data
 fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
 
-(sample.names <- sapply(fnFs, get.sample.name, USE.NAMES = FALSE))
+sample.names <- sapply(fnFs, get.sample.name, USE.NAMES = FALSE) %>% 
+  paste0('2023-',.) # problème de noms de rawdata
 # write_delim(data.frame(sample.names), paste0('data/sample_names_',barcode,'.tsv'))
 
 ########################
@@ -37,7 +41,7 @@ out.N <- filterAndTrim(fnFs, fnFs.filtN,
                          multithread = ncores)
 
 
-#head(out.N)
+head(out.N)
 
 ###########################
 # 2. PRIMER REMOVAL ########
@@ -47,8 +51,8 @@ out.N <- filterAndTrim(fnFs, fnFs.filtN,
 primer_occurence(fnFs.filtN, fnRs.filtN, FWD, REV)
 
 ### CUTADAPT
-#cutadapt <- "/Users/jorondo/miniconda3/envs/cutadapt/bin/cutadapt" 
-# cutadapt <- '/cvmfs/soft.mugqic/CentOS6/software/cutadapt/cutadapt-2.10/bin/cutadapt' # CHANGE ME to the cutadapt path on your machine
+cutadapt <-"/Users/alexisroy/miniconda3/envs/cutadapt/bin/cutadapt" # my computer
+#cutadapt <- '/cvmfs/soft.mugqic/CentOS6/software/cutadapt/cutadapt-2.10/bin/cutadapt' # IP34. CHANGE ME to the cutadapt path on your machine
 system2(cutadapt, args = "--version") # Run shell commands from R
 
 path.cut <- file.path(path_data, "2_cutadapt")
@@ -109,10 +113,14 @@ plotQualityProfile(filtRs[10:21])
 filtFs_survived <- filtFs[file.exists(filtFs)]
 filtRs_survived <- filtRs[file.exists(filtRs)]
 
+
+# list files that did NOT survived
+names(filtFs[!file.exists(filtFs)])
+names(filtRs[!file.exists(filtRs)])
+
 # Learn errors from the data
 errF <- learnErrors(filtFs_survived, multithread = ncores)
 errR <- learnErrors(filtRs_survived, multithread = ncores)
-
 plotErrors(errF, nominalQ = TRUE)
 plotErrors(errR, nominalQ = TRUE)
 
@@ -120,7 +128,19 @@ plotErrors(errR, nominalQ = TRUE)
 dadaFs <- dada(filtFs_survived, err = errF, 
                pool = 'pseudo', multithread = ncores)
 dadaRs <- dada(filtRs_survived, err = errR, 
-               pool = 'pseudo', multithread = ncores)
+               pool = 'pseudo', multithread = ncores) # pseudo pool. putting all the error "rates" information together but a heuristic.
+
+
+####################################
+######## MERGING TEST ##############
+####################################
+
+# only using the forward reads
+dadaFs
+
+# mergePairs()
+
+# mergePairs(..., just_Concatenate)
 
 # Modified version of mergePairs that rescues non-merged reads by concatenation
 # source('scripts/mergePairsRescue.R')
@@ -136,19 +156,21 @@ mergers_pooled <- mergePairsRescue(
 # Intersect the merge and concat; allows merge to fail when overlap is mismatched,
 # but recovers non-overlapping pairs by concatenating them. 
 # Motivated by https://github.com/benjjneb/dada2/issues/537#issuecomment-412530338
-path.tax <- file.path(path_data, "4_taxonomy")
+
+path.tax <- file.path(path_data, "4_taxonomy_ITS")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
-seqtab <- makeSequenceTable(mergers_pooled) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY
+ seqtab <- makeSequenceTable(mergers_pooled) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY
 
 # Remove chimeras
 seqtab.nochim <- removeBimeraDenovo(
   seqtab, method="consensus", multithread = ncores, verbose = TRUE
 )
 
-dim(seqtab); dim(seqtab.nochim) # from 11139 to 9043
+dim(seqtab); dim(seqtab.nochim) # ex: from 11139 to 9043
+
 # WRITE OUT
-write_rds(seqtab.nochim, paste0(path.tax,'/seqtab.RDS'))
+write_rds(seqtab.nochim, paste0(path.tax,'/seqtab.RDS')) # with no chimeras
 
 ### TRACK PIPELINE READS
 track_change <- track_dada(out.N = out.N, out = out,
@@ -156,21 +178,24 @@ track_change <- track_dada(out.N = out.N, out = out,
                            mergers = mergers_pooled,
                            seqtab.nochim = seqtab.nochim)
 
-track_change %>% 
-  filter(values>=0) %>% 
+path.out <- file.path("./2023", "out")
+if(!dir.exists(path.out)) dir.create(path.out)
+
+track_change %>%
   plot_track_change() %>% 
-  ggsave(paste0('out/change_ITS',barcode,'.pdf'), plot = ., 
+  ggsave(paste0('./2023/out/change_',barcode,'.pdf'), plot = ., 
          bg = 'white', width = 1600, height = 1200, 
          units = 'px', dpi = 180)
 
 ### ASSIGN TAXONOMY
+# avoir sa database dans le dossier "reference_database"
 taxa <- assignTaxonomy(
   seqtab.nochim, 
-  paste0(path_data, '/sh_general_release_dynamic_04.04.2024_dev.fasta'), 
+  paste0(path_data, '/reference_database/sh_general_release_dynamic_s_04.04.2024.fasta'), # change to your reference database
   multithread= min(ncores, 72), tryRC = TRUE, verbose = TRUE)
 
 taxa_fixed <- taxa %>% as.data.frame() %>%
   mutate(across(Kingdom:Species, ~ gsub("^[a-z]__", "", .))) 
 
-write_rds(taxa_fixe, paste0(path.tax,'/taxonomy.RDS'))
+write_rds(taxa_fixed, paste0(path.tax,'/taxonomy.RDS'))
 

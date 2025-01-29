@@ -24,15 +24,20 @@ subset_asvs <- function(taxonomy, seqtab, min_seq) {
   asvs <- subset(taxonomy, Kingdom != "Unclassified") %>% # subset needs the input to be a df
     rownames %>% 
     intersect(
-      colnames(seqtab)[colSums(seqtab) >= min_seq]
+      colnames(seqtab)[colSums(seqtab) >= min_seq] 
     ) # only keep asvs still present in seqtab
   taxonomy[asvs, ] %>% as.matrix()
 }
 
 # Remove samples with fewer than n sequences once taxa removed
-remove_ultra_rare <- function(seqtab, taxonomy, n) {
-  seqtab[,rownames(taxonomy)] %>% .[rowSums(.) > 100, ] # le nombre indique les ASVs avec de plus grands hits que l'on garde 
+
+remove_ultra_rare <- function(seqtab, taxonomy, n) { 
+  result <- seqtab[, rownames(taxonomy), drop = FALSE]  # Ensure it stays a data frame
+  result <- result[rowSums(result) > n, , drop = FALSE]  # Filter rows (samples). n = sum across ASVs in a sample
+  
+  return(result)
 }
+
 
 # Parse DNA concentration xlsx files
 parse_CERMO_xlsx <- function(files) {
@@ -72,48 +77,45 @@ asv_to_fasta <- function(seqtab, path.out) {
 # Setup ###
 ############
 
-setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/")
+setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/")
 
-dna.path <- './data/16s_subset/4_taxonomy_IP34'
 
 # Metadata
-meta_raw <- read_excel("./data/16s_subset/4_taxonomy_IP34/Verger_2023_1.xlsx", sheet = "Metadata")
+meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Metadata") # change ME to your Metadata sheet/file
 meta <- meta_raw %>%
   mutate(unique = str_remove(unique, "-16S" )) 
 
-meta_ctrl <- meta %>% 
-  filter(time =="None" | control=='TRUE')
-  
 
 meta_samples <- meta %>% 
   filter(time != "None" & control == 'FALSE')
 
+meta_ctrl <- meta %>% 
+  filter(time =="None" | control=='TRUE')
+  
 sample.names <- meta_samples$unique
 ctrl.names <- meta_ctrl$unique
 
-samples <- column_to_rownames(meta, "unique") 
 
 
-# FAIRE UNE FONCTION
-
-  # adding DNA concetration to the meatadata
-  DNA_meta_raw <- read_excel("./data/16s_subset/4_taxonomy_IP34/Verger_2023_1.xlsx", sheet = "Biomol")
+# adding DNA concetration to the meatadata
+  DNA_meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Biomol")
   
-  DNA_meta <- DNA_raw %>%
-    select(Sample = sample, Concentration = `ng/ul`) %>%
-    as.matrix()
+  DNA_meta <- DNA_meta_raw %>%
+    select(unique, Concentration = `ng/ul`) %>%
+    as.data.frame() 
   
-  cbind(DNA_meta, samples)
-
+samples <- left_join(meta, DNA_meta, by = "unique") %>% 
+  column_to_rownames("unique") 
   
   
 #########
 # 16S ####
 ###########
 
-taxa_16S_genus <- read_rds(file.path(dna.path, 'taxonomy.RDS'))
-taxa_16S_species <- read_rds(file.path(dna.path, 'taxonomy_species.RDS'))
-seqtab_16S <- read_rds(file.path(dna.path, 'seqtab.RDS'))
+path_16S <- './2023/data/16S/4_taxonomy_16S'
+taxa_16S_genus <- read_rds(file.path(path_16S, 'taxonomy.rds'))
+taxa_16S_species <- read_rds(file.path(path_16S, 'taxonomy_species.rds'))
+seqtab_16S <- read_rds(file.path(path_16S, 'seqtab.rds'))
 
 # Somehow assignSpecies enlève tous les autres rangs autres que Genre et Espèce. 
 # Fixons cela!
@@ -139,19 +141,9 @@ seqtab_16S_ctrl_filt <- remove_ultra_rare(seqtab_16S_ctrl, taxa_16S_ctrl, 10) # 
 dim(seqtab_16S_sam); dim(seqtab_16S_sam_filt); dim(taxa_16S_sam)
 dim(seqtab_16S_ctrl); dim(seqtab_16S_ctrl_filt); dim(taxa_16S_ctrl)
 
-
-  # Finding the sample that are near-empty
-  rownames1 <- rownames(seqtab_16S_sam) 
-  rownames2 <- rownames(seqtab_16S_sam_filt)
-  
-    setdiff(rownames1, rownames2) %>% 
-      cat() # Print results
-
-
-# Add dna concentration to metadata
-
-meta_samples_16S <- mutate(samples, )
-# avoir la concentration d'ADN pour un plus 
+  # Finding the sample that are near-empty 
+    setdiff(rownames(seqtab_16S_sam), rownames(seqtab_16S_sam_filt)) %>% 
+      print() # Print results
 
 # Phyloseq object
 ps_16S <- phyloseq(
@@ -160,19 +152,14 @@ ps_16S <- phyloseq(
   sample_data(samples)
 )
 
-ps_ITS <- phyloseq(
-  tax_table(taxa_ITS_sam),
-  otu_table(seqtab_ITS_sam_filt, taxa_are_rows = FALSE),
-  sample_data(meta_samples_ITS)
-)
-
-saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/pratique/out/ps_16S.rds" )
+saveRDS(ps_16S,"/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_16S.rds" )
 
 ##########################################################
 ##########################################################
 
 ps_16S_ctrl <- phyloseq(
   tax_table(taxa_16S_ctrl),
+  
   otu_table(seqtab_16S_ctrl_filt, taxa_are_rows = FALSE),
   sample_data(samples)
 )
@@ -184,15 +171,17 @@ asv_to_fasta(seqtab_16S_sam_filt, file.path(path_16S, '4_taxonomy/asv.fa'))
 # ITS ####
 ###########
 
-path_ITS <- file.path(urbanbio.path,'data/ITS')
-taxa_ITS <- read_rds(file.path(path_ITS, '4_taxonomy/taxonomy.RDS'))
-seqtab_ITS <- read_rds(file.path(path_ITS, '4_taxonomy/seqtab.RDS'))
+path_ITS <- './2023/data/ITS/'
+taxa_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS/taxonomy.RDS'))
+seqtab_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS/seqtab.RDS'))
+
+rownames(seqtab_ITS) <- paste0("2023-", rownames(seqtab_ITS)) # adding the prefix '2023_' because it was missing from the start (raw_data) )
 
 # Keep samples with metadata info
-seqtab_ITS_sam <- subset_samples(seqtab_ITS, sample.names)
+seqtab_ITS_sam <- subset_samples(seqtab_ITS, sample.names) # s'assurer que les infos de noms sont identiques pour 16S, ITS, trnl, etc.
 seqtab_ITS_ctrl <- subset_samples(seqtab_ITS, ctrl.names)
 
-# Subset ASVs
+# Subset ASVs (ex: 100 hits)
 taxa_ITS_sam <- subset_asvs(taxa_ITS, seqtab_ITS_sam, 100)
 taxa_ITS_ctrl <- subset_asvs(taxa_ITS, seqtab_ITS_ctrl, 100)
 
@@ -203,16 +192,15 @@ seqtab_ITS_ctrl_filt <- remove_ultra_rare(seqtab_ITS_ctrl, taxa_ITS_ctrl, 10)
 dim(seqtab_ITS_sam); dim(seqtab_ITS_sam_filt); dim(taxa_ITS_sam)
 dim(seqtab_ITS_ctrl); dim(seqtab_ITS_ctrl_filt); dim(taxa_ITS_ctrl)
 
-# Add sequencing effort and dna concentration to metadata
-dna_ITS <- Sys.glob(file.path(dna.path,'CERMO_*ITS*.xlsx')) %>% parse_CERMO_xlsx
-meta_samples_ITS <- add_seq_depth(seqtab_ITS_sam_filt, meta_samples, dna_ITS)
-meta_ctrl_ITS <- add_seq_depth(seqtab_ITS_ctrl_filt, meta_controls, dna_ITS)
+# Finding the sample that are near-empty 
+setdiff(rownames(seqtab_16S_sam), rownames(seqtab_16S_sam_filt)) %>% 
+  print() # Print results
 
 # Phyloseq objects
 ps_ITS <- phyloseq(
   tax_table(taxa_ITS_sam),
   otu_table(seqtab_ITS_sam_filt, taxa_are_rows = FALSE),
-  sample_data(meta_samples_ITS)
+  sample_data(samples)
   )
 
 ps_ITS_ctrl <- phyloseq(
@@ -248,7 +236,7 @@ dim(seqtab_trnL_sam); dim(seqtab_trnL_sam_filt); dim(taxa_trnL_sam)
 dim(seqtab_trnL_ctrl); dim(seqtab_trnL_ctrl_filt); dim(taxa_trnL_ctrl)
 
 # Add sequencing effort and dna concentration to metadata
-dna_trnL <- Sys.glob(file.path(dna.path,'CERMO_*trnL*.xlsx')) %>% parse_CERMO_xlsx
+dna_trnL <- Sys.glob(file.path(path_16S,'CERMO_*trnL*.xlsx')) %>% parse_CERMO_xlsx
 meta_samples_trnL <- add_seq_depth(seqtab_trnL_sam_filt, meta_samples, dna_trnL)
 meta_ctrl_trnL <- add_seq_depth(seqtab_trnL_ctrl_filt, meta_controls, dna_trnL)
 
@@ -284,15 +272,36 @@ saveRDS(ps_ctrl.ls, file.path(urbanbio.path,'data/ps_ctrl.ls.rds'))
 # Decontamination DECONTAM
 # https://benjjneb.github.io/decontam/vignettes/decontam_intro.html
 
+library(ggplot2); packageVersion("ggplot2")
+library(decontam); packageVersion("decontam")
 
+# code Alex
+# prune rows NA in my phyloseq object - make it numeric
+ps_16S_clean <- prune_samples(!is.na(sample_data(ps_16S)$Concentration), ps_16S)
+sample_data(ps_16S_clean)$Concentration <- as.numeric(sample_data(ps_16S_clean)$Concentration)
+## j'ai enelever des échantillons, est-ce correct ?
 
+contamdf.freq <- isContaminant(ps_16S_clean, method="frequency", conc="Concentration") # conc needs to be grater than 0
+View(contamdf.freq) # $contaminant=TRUE if $p < 0.1
 
+# how many contaminants
+table(contamdf.freq$contaminant) # TRUE = contaminants 
 
+list(which(contamdf.freq$contaminant)) # la table est en fréquence d'ASV décroissant, montre leur importance
+                                        # exemple: 3 = l'ASV le 3e plus fréquent
+
+plot_frequency(ps_16S_clean, taxa_names(ps_16S_clean)[c(1,119)], conc="Concentration") + 
+  xlab("DNA Concentration (ng/ul)")
+# ça ressemble pas à ce qu'il dit 
+
+#############################
+# code de Jo
 
 ps_16S_load <- ps_16S %>%
-  prune_samples(sample_data(.)$bacterial_load>0, .)
+  prune_samples(samples(.)$Concentration>0, .)
+
 contam_freq<- ps_16S_load %>% 
-  isContaminant(method = 'frequency', conc = 'bacterial_load')
+  isContaminant(method = 'frequency', conc = 'Concentration')
 
 table(contam_freq$contaminant)
 head(which(contam_freq$contaminant))

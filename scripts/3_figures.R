@@ -2,21 +2,38 @@
 ###### PHYLOSEQ #######
 #######################
 
-
 library(tidyverse)
 library(phyloseq)
 library(permute)
 library(lattice)
-library(vegan)
+library(vegan) # sanity check | diversity measure
 library(cowplot)
+library(ggpubr) # plot + stats
+library(rstatix) # statistics
+library(car) # levene test
 
 setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere")
 
-ps_16S <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_16S.rds")
+ps_16S <- readRDS("~/2023/out/ps_16S.rds")
+
+##############################
+##### DIVERSITY METRICS #####
+#############################
+
+## FUNCTIONS ##
+
+# transform the phyloseq object in data.frame
+sam_data_as_tibble <- function(ps) {
+  require('dplyr', 'phyloseq')
+  sample_data(ps) %>%
+    rownames_to_column('Sample') %>% 
+    as.tibble
+}
+
 
 # preparing the rarefaction curve
-otu_matrix <- as(otu_table(ps_16S), "matrix")
-otu_matrix_t <- t(otu_matrix)
+otu_matrix_t <- t(as(otu_table(ps_16S), "matrix"))
+
 
 # rarefaction curve
 rarecurve(otu_matrix_t, step = 50, label = FALSE, cex = 0.5, xlim = c(0, 10000))
@@ -32,76 +49,63 @@ ps.rarefied = rarefy_even_depth(ps_16S, rngseed=1, sample.size=0.9*min(sample_su
 phylo.df <- psmelt(ps_16S) # pour comparaison
 phylo.rarefied.df <- psmelt(ps.rarefied)
 
-dim(phylo.df) # voir différences entre raréfier et non raréfier
+dim(phylo.df) # voir différences entre raréfié et non raréfié
 dim(phylo.rarefied.df)
 
-# estimer la richesse de tous les échantillons - nb ASVs
-asv.nombre <- phylo.rarefied.df$OTU %>% 
-  unique() %>% 
-  length()
-  # on aurait pu le faire en regardant seulement l'objet phyloseq
 
-# estimer la richesse par sample
-richesse.sample.df <- phylo.rarefied.df %>%
-  filter(Abundance > 0) %>%             # Include only OTUs with abundance > 0
-  group_by(Sample, time) %>%            # Group by `Sample` and `time`
-  summarise(Richness = n_distinct(OTU), .groups = "drop") %>%  # Count unique OTUs
-  left_join(phylo.rarefied.df %>% select(Sample, time, OTU, Abundance), 
-            by = c("Sample", "time"))
-  
-
-# ABONDANCE totale
-sample_sums <- phylo.rarefied.df %>%
-  group_by(Sample) %>%              # Group by the Sample column
-  summarize(TotalAbundance = sum(Abundance)) # Sum the Abundance column for each group
-
-# ABONDANCE relative
-phylo_with_rel_abundance <- richesse.sample.df %>%
-  group_by(Sample) %>%                                    # Group by Sample
-  mutate(TotalAbundance = sum(Abundance),                # Calculate total abundance for each sample
-         RelativeAbundance = Abundance / TotalAbundance) %>% # Compute relative abundance
-  ungroup() %>%  # Ensure ungrouping to avoid unintended grouping effects
-  select(Sample, time, OTU, TotalAbundance, RelativeAbundance, Richness)
-
-# Shannon index + exp(Shannon Index)
-richness.shannon.df <- phylo_with_rel_abundance %>%
-  group_by(Sample, time) %>%                           # Include 'time' in the grouping
-  mutate(ShannonComponent = ifelse(RelativeAbundance > 0, 
-                                   -RelativeAbundance * log(RelativeAbundance), 
-                                   0)) %>%  # Calculate each p_i * log(p_i) term
+# calculate diversity metric in a table
+alpha.diversity.metrics.df <- phylo.rarefied.df %>%
+  filter(Abundance>0) %>% # filtrer les lignes (ASV) de 0
+  group_by(Sample) %>% # grouper par sample
+  mutate(Richness = n(), # unique ASV par sample
+         RelativeAbundance = Abundance / sum(Abundance), 
+         ShannonComponent = ifelse(RelativeAbundance > 0, 
+                                   -RelativeAbundance * log(RelativeAbundance), # NOTE: fonctionnement du ifelse; ifelse(test, yes, no)
+                                   0), # calculer pour chaque sample le (abondance relative * log(abondance relative)) terme
+         SimpsonIndex = (sum(RelativeAbundance^2)), 
+         ) %>%
   summarise(
-    ShannonIndex = sum(ShannonComponent),  # Summarize Shannon components
-    expShannonIndex = exp(sum(ShannonIndex)), 
-    Richness = dplyr::first(Richness),    # Preserve pre-calculated Richness
-    time = dplyr::first(time),            # Preserve 'time'
-    RelativeAbundance = list(RelativeAbundance)  # Store Relative Abundance as a list
-  ) %>%
-  tidyr::unnest(cols = c(RelativeAbundance)) %>%  # Expand Relative Abundance
-  ungroup()
-# NOTE: fonctionnement du ifelse; ifelse(test, yes, no)
+    time = dplyr::first(time),
+    orchard = dplyr::first(orchard),
+    type = dplyr::first(type),
+    cultivar = dplyr::first(cultivar),
+    Richness = dplyr::first(Richness), # Preserver mes variable avec dplyr::first(column_name)
+    ShannonIndex = sum(ShannonComponent),  
+    expShannonIndex = exp(sum(ShannonIndex)), # formule pour expShannonIndex
+    SimpsonIndex = dplyr::first(SimpsonIndex),
+    InverseSimpsonIndex = 1 / sum(RelativeAbundance^2), # formule pour InverseSimpsonIndex
+  ) %>% 
+  ungroup() 
 
-# inverse Gini-Simpson index
-richness.shannon.simpson.df <- richness.shannon.df %>%
-  group_by(Sample, time) %>%  # Group by Sample and time
-  mutate(SimpsonIndex = sum(RelativeAbundance^2)) %>%  # Calculate SimpsonIndex
-  summarise(
-    Richness = max(Richness),  # selon moi, max fonctionne
-    ShannonIndex = max(ShannonIndex),
-    expShannonIndex =  dplyr::first(expShannonIndex),
-    SimpsonIndex = max(SimpsonIndex),  # or use other appropriate aggregation
-    InverseSimpsonIndex = 1 / sum(RelativeAbundance^2),  # Calculate the Inverse Simpson Index
-    .groups = 'drop'  # Ungroup after summarizing
-  ) %>%
-  ungroup()
+View(alpha.diversity.metrics.df) # ce tableau ne contient pas les contrôles
+
+# sanity check
+# extraire la table d'OTU de l'objet phyloseq raréfié
+otu_table_matrix <- as(otu_table(ps.rarefied), "matrix")
+
+# Calculate Shannon diversity
+shannon_diversity <- diversity(otu_table_matrix, index = "shannon")
+
+# Calculate Simpson diversity
+simpson_diversity <- diversity(otu_table_matrix, index = "simpson") 
+
+# Calculate Inverse Simpson diversity
+invsimpson_diversity <- diversity(otu_table_matrix, index = "invsimpson")
+
+
+
+
+##############################
+########## PLOTS ############
+#############################
 
 # mettre en ordre inverse alphabétique la variable "time"
-richness.shannon.simpson.df <- richness.shannon.simpson.df %>%
+alpha.diversity.metrics.df <- alpha.diversity.metrics.df %>%
   mutate(time = factor(time, levels = rev(sort(unique(time)))))
 
-# violin plots
 
 # modifer le plot - BRILLANT
-R.S.S.index.long <- richness.shannon.simpson.df %>% 
+R.S.S.index.long <- alpha.diversity.metrics.df %>% 
   pivot_longer(cols = c(Richness, ShannonIndex, expShannonIndex, SimpsonIndex, InverseSimpsonIndex),
                names_to = "DiversityMeasure",
                values_to = "DiversityIndex") 
@@ -125,36 +129,178 @@ R.S.S.index.hill$DiversityMeasure <- factor(R.S.S.index.hill$DiversityMeasure,
 
 
 
+#####################
+  # STATISTIQUES #
+#####################
 
-# time to plot 
+t_test <- t_test(alpha.diversity.metrics.df, expShannonIndex  ~ time)
+
+# Vérification des conditions du test de t
+# normalité des résidus; homoscédasticité des variances; indépendance des observation
+
+  # normalité
+  model <- lm(expShannonIndex ~ time, data = alpha.diversity.metrics.df) # ok?
+  residuals <- residuals(model)
+  hist(residuals) # visualisation
+  
+  # variances
+  leveneTest(expShannonIndex ~ time, data = alpha.diversity.metrics.df)
+  # if p-value < 0.05 -> variances are not equal
+  
+  # indépendance
+  plot(model$fitted.values, residuals)
+  abline(h = 0, col = "red")
+
+
+# GENERAL
+# Richness
+kruskal.test(Richness ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
+pairwise.wilcox.test(alpha.diversity.metrics.df$Richness, alpha.diversity.metrics.df$time,
+                     p.adjust.method = "BH") # finding the difference between the groups
+
+# Shannon index
+kruskal.test(ShannonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
+pairwise.wilcox.test(alpha.diversity.metrics.df$ShannonIndex, alpha.diversity.metrics.df$time,
+                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
+
+# Exponential Shannon index
+kruskal.test(expShannonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
+pairwise.wilcox.test(alpha.diversity.metrics.df$expShannonIndex, alpha.diversity.metrics.df$time,
+                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
+
+# Simpson index
+kruskal.test(SimpsonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
+pairwise.wilcox.test(alpha.diversity.metrics.df$SimpsonIndex, alpha.diversity.metrics.df$time,
+                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
+
+# Inverse Simpson Index
+kruskal.test(InverseSimpsonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
+pairwise.wilcox.test(alpha.diversity.metrics.df$InverseSimpsonIndex, alpha.diversity.metrics.df$time,
+                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
+
+# OVERALL
+compare_means(c(Richness, ShannonIndex, SimpsonIndex ) ~ time,  data = alpha.diversity.metrics.df)
+compare_means(c(Richness, expShannonIndex, InverseSimpsonIndex ) ~ time,  data = alpha.diversity.metrics.df)
+
+
+
+# TIME TO PLOT
   # normal values
-plot.1 <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex, color = time, fill = time)) +
-  geom_boxplot(alpha = 0.25) +
-  geom_jitter(width = 0.15, height = 0.05 , alpha = 0.5, size = 0.75) +
-  labs(x = "Time", y = "Diversity Index",
-       title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
-       caption = "Data from 2023", color = "Time", fill = "Time") +
-  facet_wrap(~ DiversityMeasure, scales = "free_y",
+# Create the plot
+
+my_comparisons <- list( c("May", "July"), c("July", "August"),c("May", "August") ) # for stats
+
+plot.1.general <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex)) +
+  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
+  geom_jitter(aes(shape = orchard, color = cultivar), width = 0.15, alpha = 0.5, size = 0.75) +
+  labs(
+    x = "Time", 
+    y = "Diversity Index",
+    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
+    subtitle = "Data from 2023", 
+    shape = "Orchard", 
+    color = "Cultivar", 
+    fill = "Time"
+  ) +
+  facet_wrap(~DiversityMeasure, scales = "free_y", ncol = 3,
              labeller = as_labeller(c("Richness" = "Richness", 
                                       "ShannonIndex" = "Shannon Index", 
                                       "SimpsonIndex" = "Simpson Index"))) +
+  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") + 
   theme_light() +
-  theme(legend.position = "bottom")
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom")  
+  
+plot.1.general
 
 # time to plot 
   # hill values
- plot.2 <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex, color = time, fill = time)) +
-  geom_boxplot(alpha = 0.25) +
-  geom_jitter(width = 0.15, height = 0.05 , alpha = 0.5, size = 0.75) +
-  labs(x = "Time", y = "Diversity Index",
-       title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
-       caption = "Data from 2023", color = "Time", fill = "Time") +
+plot.2.general <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
+  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
+  geom_jitter(aes(shape = orchard, color = cultivar), width = 0.15, alpha = 0.5, size = 0.75) +
+  labs(
+    x = "Time", 
+    y = "Diversity Index",
+    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
+    subtitle = "Data from 2023", 
+    shape = "Orchard", 
+    color = "Cultivar", 
+    fill = "Time"
+  ) +
   facet_wrap(~ DiversityMeasure,
              labeller = as_labeller(c("Richness" = "Richness", 
                                       "expShannonIndex" = "Exponential Shannon Index", 
                                       "InverseSimpsonIndex" = "Inverse Simpson Index"))) +
+  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
   theme_light() +
-  theme(legend.position = "bottom")
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom")  
 
-plot.1
-plot.2
+plot.2.general
+
+##########################
+## Orchard Specifically ##
+##########################
+# INUTILE lol
+## NORMAL Values
+plot.1.orchard <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex)) +
+  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
+  geom_jitter(width = 0.15, alpha = 0.5, size = 0.75) +
+  labs(
+    x = "Time", 
+    y = "Diversity Index",
+    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
+    subtitle = "Data from 2023",
+    fill = "Time"
+  ) +
+  facet_wrap(~ orchard + DiversityMeasure, scales = "free_y",  ncol = 3, 
+             labeller = labeller(
+               DiversityMeasure = c(
+                 "Richness" = "Richness", 
+                 "ShannonIndex" = "Shannon Index",
+                 "SimpsonIndex" = "Simpson Index"
+               )
+             )) +
+  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
+  theme_light() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    strip.text = element_text(size = 10)  # Adjust the size if needed
+  )  
+
+plot.1.orchard
+
+
+## HILL NUMBERS
+plot.2.orchard <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
+  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
+  geom_jitter(width = 0.15, alpha = 0.5, size = 0.75) +
+  labs(
+    x = "Time", 
+    y = "Diversity Index",
+    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
+    subtitle = "Data from 2023",
+    fill = "Time"
+  ) +
+  facet_wrap(~ orchard + DiversityMeasure, ncol = 3, 
+             labeller = labeller(
+               DiversityMeasure = c(
+                 "Richness" = "Richness", 
+                 "expShannonIndex" = "Exponential Shannon Index",
+                 "InverseSimpsonIndex" = "Inverse Simpson Index"
+               )
+             )) +
+  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
+  theme_light() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "bottom",
+    strip.text = element_text(size = 10)  # Adjust the size if needed
+  ) 
+
+plot.2.orchard
+
+
