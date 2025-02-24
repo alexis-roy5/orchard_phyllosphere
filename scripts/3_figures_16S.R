@@ -1,5 +1,5 @@
 #######################
-###### PHYLOSEQ #######
+## FIGURES & METRICS ##
 #######################
 
 library(tidyverse)
@@ -11,10 +11,13 @@ library(cowplot)
 library(ggpubr) # plot + stats
 library(rstatix) # statistics
 library(car) # levene test
+library(RColorBrewer)
+library(ggdist)
+
 
 setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere")
 
-ps_16S <- readRDS("~/2023/out/ps_16S.rds")
+ps_16S <- readRDS("./2023/out/ps_16S.rds")
 
 ##############################
 ##### DIVERSITY METRICS #####
@@ -25,9 +28,9 @@ ps_16S <- readRDS("~/2023/out/ps_16S.rds")
 # transform the phyloseq object in data.frame
 sam_data_as_tibble <- function(ps) {
   require('dplyr', 'phyloseq')
-  sample_data(ps) %>%
+  data.frame(sample_data(ps)) %>%
     rownames_to_column('Sample') %>% 
-    as.tibble
+    tibble
 }
 
 
@@ -67,8 +70,10 @@ alpha.diversity.metrics.df <- phylo.rarefied.df %>%
   summarise(
     time = dplyr::first(time),
     orchard = dplyr::first(orchard),
+    practice = dplyr::first(practice),
     type = dplyr::first(type),
     cultivar = dplyr::first(cultivar),
+    RelativeAbundance = dplyr::first(RelativeAbundance),
     Richness = dplyr::first(Richness), # Preserver mes variable avec dplyr::first(column_name)
     ShannonIndex = sum(ShannonComponent),  
     expShannonIndex = exp(sum(ShannonIndex)), # formule pour expShannonIndex
@@ -142,6 +147,8 @@ t_test <- t_test(alpha.diversity.metrics.df, expShannonIndex  ~ time)
   model <- lm(expShannonIndex ~ time, data = alpha.diversity.metrics.df) # ok?
   residuals <- residuals(model)
   hist(residuals) # visualisation
+  shapiro.test(residuals(model)) # shapiro.wilk
+  
   
   # variances
   leveneTest(expShannonIndex ~ time, data = alpha.diversity.metrics.df)
@@ -151,94 +158,155 @@ t_test <- t_test(alpha.diversity.metrics.df, expShannonIndex  ~ time)
   plot(model$fitted.values, residuals)
   abline(h = 0, col = "red")
 
-
-# GENERAL
-# Richness
-kruskal.test(Richness ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
-pairwise.wilcox.test(alpha.diversity.metrics.df$Richness, alpha.diversity.metrics.df$time,
-                     p.adjust.method = "BH") # finding the difference between the groups
-
-# Shannon index
-kruskal.test(ShannonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
-pairwise.wilcox.test(alpha.diversity.metrics.df$ShannonIndex, alpha.diversity.metrics.df$time,
-                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
-
-# Exponential Shannon index
-kruskal.test(expShannonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
-pairwise.wilcox.test(alpha.diversity.metrics.df$expShannonIndex, alpha.diversity.metrics.df$time,
-                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
-
-# Simpson index
-kruskal.test(SimpsonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
-pairwise.wilcox.test(alpha.diversity.metrics.df$SimpsonIndex, alpha.diversity.metrics.df$time,
-                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
-
-# Inverse Simpson Index
-kruskal.test(InverseSimpsonIndex ~ time, data = alpha.diversity.metrics.df) # is there a difference ? yes: p-value < 0.05. 
-pairwise.wilcox.test(alpha.diversity.metrics.df$InverseSimpsonIndex, alpha.diversity.metrics.df$time,
-                     p.adjust.method = "BH") # finding the difference between the groups. post-hoc test.
-
-# OVERALL
-compare_means(c(Richness, ShannonIndex, SimpsonIndex ) ~ time,  data = alpha.diversity.metrics.df)
-compare_means(c(Richness, expShannonIndex, InverseSimpsonIndex ) ~ time,  data = alpha.diversity.metrics.df)
+# si les conditions du test ne sont pas remplies, on devrait faire un Wilcoxon-Mann-Whitney test -> dans le plot ...
 
 
 
 # TIME TO PLOT
   # normal values
 # Create the plot
-
+  
+nb.sample.months <- alpha.diversity.metrics.df %>%
+  count(time) 
+  
 my_comparisons <- list( c("May", "July"), c("July", "August"),c("May", "August") ) # for stats
 
 plot.1.general <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex)) +
-  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
-  geom_jitter(aes(shape = orchard, color = cultivar), width = 0.15, alpha = 0.5, size = 0.75) +
+  geom_boxplot(alpha = 0.25, outlier.shape = NA, size = 0.5) +  
+  geom_jitter(aes(color = cultivar), width = 0.15, size = 1.5) + 
   labs(
-    x = "Time", 
-    y = "Diversity Index",
-    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
-    subtitle = "Data from 2023", 
-    shape = "Orchard", 
-    color = "Cultivar", 
+    x = NULL,
+    y = "Alpha Diversity Index",
+    subtitle = "Data from 2023",
+    color = "Cultivar",
     fill = "Time"
   ) +
   facet_wrap(~DiversityMeasure, scales = "free_y", ncol = 3,
              labeller = as_labeller(c("Richness" = "Richness", 
                                       "ShannonIndex" = "Shannon Index", 
                                       "SimpsonIndex" = "Simpson Index"))) +
-  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") + 
-  theme_light() +
+  stat_compare_means(comparisons = my_comparisons, label = "p.format", 
+                     method = 'wilcox.test', p.adjust.method = "bonferroni") + 
+  theme_light(base_size = 14) +
   theme(
-    plot.title = element_text(hjust = 0.5),
-    legend.position = "bottom")  
-  
+    panel.grid.major = element_blank(),  # Supprime le quadrillage principal
+    panel.grid.minor = element_blank()  # Supprime le quadrillage mineur
+  ) +
+  scale_color_brewer(palette = "Dark2")
+
 plot.1.general
 
-# time to plot 
-  # hill values
-plot.2.general <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
-  geom_boxplot(aes(fill = time), alpha = 0.25, outliers = FALSE) +
-  geom_jitter(aes(shape = orchard, color = cultivar), width = 0.15, alpha = 0.5, size = 0.75) +
+ggsave("./2023/out/alpha_orchard.png", plot = plot.1.general, units = "px", width = 3000, height = 2000, dpi = 260)
+
+
+### HILL CURVE ###
+# Define the HILL function
+HILL <- function(dataframe.abundance, q) {
+  p <- dataframe.abundance$Richness / sum(dataframe.abundance$Richness)  # Proportional abundances
+  if (q == 1) {
+    # Shannon diversity (q = 1)
+    return(exp(-sum(p * log(p))))
+  } else {
+    # General case for q != 1
+    return((sum(p^q))^(1 / (1 - q)))
+  }
+}
+
+# Example species abundance data
+df.abundance <- phylo.rarefied.df %>% 
+  filter(Abundance > 0) %>% 
+  reframe(Sample = Sample,
+          Richness = Abundance,
+          ASV = OTU,
+          Time = time)
+
+# Create a sequence of q values from 0 to 2
+q_values <- seq(0, 2, by = 0.01)
+
+
+# function to calculate Hill numbers for a SINGLE sample
+calculate_hill_for_sample <- function(sample_data, q_values) {
+  results <- sapply(q_values, function(q) {
+    HILL(sample_data, q)
+  })
+  return(data.frame(q = q_values, Hill = results))
+}
+
+# function for each sample using group_modify
+hill_results <- df.abundance %>%
+  group_by(Sample) %>% 
+  group_modify(~ calculate_hill_for_sample(.x, q_values))
+
+# adding time
+hill_results_time <- df.abundance %>%
+  select(Time, Sample) %>%
+  distinct(Sample, .keep_all = TRUE) %>%
+  left_join(hill_results, ., by = "Sample")
+
+plot.hill.curve <- ggplot(hill_results_time %>% 
+                            group_by(Sample) %>% 
+                            mutate(Time = factor(Time, levels = c("May", "July", "August"))), 
+                          aes(x = q, y = Hill)) +
+  geom_point(size = 0.1) +
+  geom_smooth()+
+  facet_wrap(~Time)
+
+table(is.na(hill_results_time$Time))
+
+
+## HILL NUMBERS - boxplot
+plot.2.general.box <- ggplot(R.S.S.index.hill, aes(x = DiversityMeasure, y = DiversityIndex)) +
+  geom_boxplot(outliers = FALSE) +
+  geom_jitter(aes(color = cultivar), width = 0.15, alpha = 0.5, size = 0.75) +
   labs(
-    x = "Time", 
-    y = "Diversity Index",
-    title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
+    x = NULL, 
+    y = "Alpha Diversity Index",
+    title = "Orchard Phyllosphere Alpha Diversity (Hill Numbers) in Three Different Months (n = 349)", 
     subtitle = "Data from 2023", 
-    shape = "Orchard", 
-    color = "Cultivar", 
-    fill = "Time"
+    color = "Cultivar"
   ) +
-  facet_wrap(~ DiversityMeasure,
-             labeller = as_labeller(c("Richness" = "Richness", 
-                                      "expShannonIndex" = "Exponential Shannon Index", 
-                                      "InverseSimpsonIndex" = "Inverse Simpson Index"))) +
-  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
+  facet_wrap(~ time) +
+  scale_x_discrete(labels = c(
+    "Richness" = "Richness",
+    "expShannonIndex" = "Exponential Shannon Index",
+    "InverseSimpsonIndex" = "Inverse Simpson Index"
+  )) + 
   theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5),
-    legend.position = "bottom")  
+    panel.grid.major = element_blank(),  
+    panel.grid.minor = element_blank(),  
+    axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_color_brewer(palette = "Dark2")
 
-plot.2.general
+plot.2.general.box
+
+ggsave("./2023/out/alpha_orchard_hill.png", plot = plot.2.general.box, units = "px", width = 3000, height = 2000, dpi = 260)
+
+### BIO/CONV ###
+
+plot.3.bio <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex, color = practice)) +
+  geom_boxplot(outlier.shape = NA, size = 0.5) +  
+  geom_jitter(width = 0.1, height = 0, size = 1.5) + 
+  labs(
+    x = NULL,
+    y = "Alpha Diversity Index",
+    subtitle = "Data from 2023",
+    color = "Practice"
+  ) +
+  facet_wrap(~DiversityMeasure, scales = "free_y", ncol = 3,
+             labeller = as_labeller(c("Richness" = "Richness", 
+                                      "ShannonIndex" = "Shannon Index", 
+                                      "SimpsonIndex" = "Simpson Index"))) +
+  theme_light(base_size = 14) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  scale_color_brewer(palette = "Dark2")
+
+
+plot.3.bio
 
 ##########################
 ## Orchard Specifically ##
@@ -250,12 +318,12 @@ plot.1.orchard <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex)) 
   geom_jitter(width = 0.15, alpha = 0.5, size = 0.75) +
   labs(
     x = "Time", 
-    y = "Diversity Index",
+    y = "Alpha Diversity Index",
     title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
     subtitle = "Data from 2023",
     fill = "Time"
   ) +
-  facet_wrap(~ orchard + DiversityMeasure, scales = "free_y",  ncol = 3, 
+  facet_grid(DiversityMeasure ~ orchard , scales = "free_y",
              labeller = labeller(
                DiversityMeasure = c(
                  "Richness" = "Richness", 
@@ -263,13 +331,12 @@ plot.1.orchard <- ggplot(R.S.S.index.normal, aes(x = time, y = DiversityIndex)) 
                  "SimpsonIndex" = "Simpson Index"
                )
              )) +
-  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
   theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5),
     legend.position = "bottom",
     strip.text = element_text(size = 10)  # Adjust the size if needed
-  )  
+  ) 
 
 plot.1.orchard
 
@@ -280,12 +347,12 @@ plot.2.orchard <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
   geom_jitter(width = 0.15, alpha = 0.5, size = 0.75) +
   labs(
     x = "Time", 
-    y = "Diversity Index",
+    y = "Alpha Diversity Index",
     title = "Orchard Phyllosphere Alpha Diversity in Three Different Months", 
     subtitle = "Data from 2023",
     fill = "Time"
   ) +
-  facet_wrap(~ orchard + DiversityMeasure, ncol = 3, 
+  facet_grid(DiversityMeasure ~ orchard,  
              labeller = labeller(
                DiversityMeasure = c(
                  "Richness" = "Richness", 
@@ -293,7 +360,6 @@ plot.2.orchard <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
                  "InverseSimpsonIndex" = "Inverse Simpson Index"
                )
              )) +
-  stat_compare_means(comparisons = my_comparisons, label =  "p.signif") +
   theme_light() +
   theme(
     plot.title = element_text(hjust = 0.5),
@@ -304,3 +370,19 @@ plot.2.orchard <- ggplot(R.S.S.index.hill, aes(x = time, y = DiversityIndex)) +
 plot.2.orchard
 
 
+# Augmente la taille de base des textes
+theme_para
+
+theme_para <-  theme(
+  plot.title = element_text(size = 16, hjust = 0.5, face = "bold"),  # Titre plus grand
+  axis.text = element_text(size = 14),  # Texte des axes
+  axis.title = element_text(size = 16),  # Titres des axes
+  legend.text = element_text(size = 14),  # Texte de la légende
+  legend.title = element_text(size = 14, face = "bold"),  # Titre de la légende plus visible
+  plot.caption = element_text(size = 14, hjust = 0.5, vjust = 3, face = "italic"),  # Caption plus lisible et centrée
+  strip.text = element_text(size = 14, face = "bold"),  # Titres des facettes
+  legend.position = "bottom",
+  panel.grid.major = element_line(size = 0.8),  # Grilles plus épaisses
+  panel.grid.minor = element_line(size = 0.5),  # Grilles secondaires
+  axis.line = element_line(size = 1.2),  # Axes plus épais
+  panel.border = element_rect(size = 1.5))  
