@@ -3,7 +3,7 @@
 setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # change ME to your beginning directory 
 
 library(pacman)
-p_load(dada2, tidyverse, Biostrings, ShortRead, parallel)
+p_load(dada2, tidyverse, Biostrings, ShortRead, parallel, readxl)
 source('./scripts/myFunctions.R')
 
 
@@ -23,13 +23,13 @@ fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE)) #
 fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
 
 # metadata where is your sample names
-meta <- read.csv("./2023/data/ITS/4_taxonomy_ITS/meta.csv", sep = ";")
+meta <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Metadata")
 
-# The next steps work with a correctly formated(good names) metadata with the fastq files!
+# The next steps work with a correctly formated (good names) metadata with the fastq files!
 
 # vector with the sample names
-sample_names <- meta$Sample_name  # Change 'Sample_name' to your actual column name
-sample_names <- sample_names[sample_names != ""]
+sample_names <- meta$sample  # Change 'Sample_name' to your actual column name
+sample_names <- sample_names[sample_names != ""] # If nothing in the column, do not keep it!
 
 # Filter sample_names to keep only the ones found in fnFs
 valid_samples <- sample_names[sapply(sample_names, function(x) any(grepl(x, fnFs)))]
@@ -48,7 +48,9 @@ if (length(ordered_samples) != length(fnFs)) {
   stop("Mismatch: ordered_samples and fnFs do not have the same length.")
 }
 # problem of metadata - looking for the differences
-unused_fnFs <- fnFs[!sapply(fnFs, function(path) any(grepl(paste(sample_names, collapse = "|"), path)))]
+pattern <- paste(sample_names, collapse = "|")
+used_fnFs <- sapply(fnFs, function(path) grepl(pattern, path))
+unused_fnFs <- fnFs[!used_fnFs]
 
 # adding prefix - if needed
 # ordered_samples <- ifelse(grepl(paste0("^", prefix), ordered_samples), 
@@ -177,7 +179,7 @@ merged <- mergePairs(dadaFs, filtFs_survived, dadaRs, filtRs_survived, verbose=T
 # Intersect the merge and concat; allows merge to fail when overlap is mismatched,
 # but recovers non-overlapping pairs by concatenating them. 
 # Motivated by https://github.com/benjjneb/dada2/issues/537#issuecomment-412530338
-path.tax <- file.path(path_data, "4_taxonomy")
+path.tax <- file.path(path_data, "4_taxonomy_ITS_real")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
 seqtab <- makeSequenceTable(merged) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY
@@ -194,24 +196,24 @@ write_rds(seqtab.nochim, paste0(path.tax,'/seqtab.RDS'))
 ### TRACK PIPELINE READS
 track_change <- track_dada(out.N = out.N, out = out,
                            dadaFs = dadaFs, dadaRs = dadaRs,
-                           mergers = mergers_pooled,
+                           mergers = merged,
                            seqtab.nochim = seqtab.nochim)
 
 track_change %>% 
   filter(values>=0) %>% 
   plot_track_change() %>% 
-  ggsave(paste0('out/change_',barcode,'.pdf'), plot = ., 
+  ggsave(paste0('./2023/out/change_',barcode,'.pdf'), plot = ., 
          bg = 'white', width = 1600, height = 1200, 
          units = 'px', dpi = 180)
 
 ### ASSIGN TAXONOMY
 taxa <- assignTaxonomy(
   seqtab.nochim, 
-  paste0(path_data, '/sh_general_release_dynamic_04.04.2024_dev.fasta'), 
+  paste0(path_data, '/reference_database/sh_general_release_dynamic_s_04.04.2024.fasta'), 
   multithread= min(ncores, 72), tryRC = TRUE, verbose = TRUE)
 
 taxa_fixed <- taxa %>% as.data.frame() %>%
   mutate(across(Kingdom:Species, ~ gsub("^[a-z]__", "", .))) 
 
-write_rds(taxa_fixe, paste0(path.tax,'/taxonomy.RDS'))
+write_rds(taxa_fixed, paste0(path.tax,'/taxonomy.RDS'))
 

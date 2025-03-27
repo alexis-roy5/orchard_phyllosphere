@@ -1,6 +1,5 @@
 library(pacman)
-library("readxl")  
-p_load(tidyverse, phyloseq, magrittr, decontam, Biostrings)
+p_load(tidyverse, phyloseq, magrittr, decontam, Biostrings, readxl)
 source("https://github.com/jorondo1/misc_scripts/raw/refs/heads/main/phyloseq_functions.R")
 
 
@@ -122,7 +121,7 @@ seqtab_ITS_sam <- subset_samples(seqtab_ITS, sample.names.phylo) # s'assurer que
 seqtab_ITS_ctrl <- subset_samples(seqtab_ITS, ctrl.names)
 
 # Subset ASVs (ex: 100 hits)
-taxa_ITS_sam <- subset_asvs(taxa_ITS, seqtab_ITS_sam, 100)
+taxa_ITS_sam <- subset_asvs(taxa_ITS, seqtab_ITS_sam, 10)
 taxa_ITS_ctrl <- subset_asvs(taxa_ITS, seqtab_ITS_ctrl, 100) # ne fonctionne pas avec 1 sample 
 
 # looking at the repartition of sample size - to choose the treshold for "remove_ultra_rare"
@@ -133,7 +132,7 @@ rowSums(seqtab_ITS_sam) %>%
 axis(1, at = pretty(rowSums(seqtab_ITS_sam), n = 20))  # adding ticks 
 
 # Remove near-empty samples - LOOK at the number and change it in consequences
-seqtab_ITS_sam_filt <- remove_ultra_rare(seqtab_ITS_sam, taxa_ITS_sam, 3000) 
+seqtab_ITS_sam_filt <- remove_ultra_rare(seqtab_ITS_sam, taxa_ITS_sam, 2000) 
 seqtab_ITS_ctrl_filt <- remove_ultra_rare(seqtab_ITS_ctrl, taxa_ITS_ctrl, 2000)
 
 dim(seqtab_ITS_sam); dim(seqtab_ITS_sam_filt); dim(taxa_ITS_sam)
