@@ -1,26 +1,65 @@
 #ITS
 #  ml StdEnv/2023 r/4.4.0 mugqic/cutadapt/2.10
+setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # change ME to your beginning directory 
+
 library(pacman)
 p_load(dada2, tidyverse, Biostrings, ShortRead, parallel)
-source('scripts/myFunctions.R')
-source('scripts/mergePairsRescue.R')
+source('./scripts/myFunctions.R')
 
-setwd("/home/def-ilafores/analysis/orchard_phyllosphere")
 
 # CONFIG
 barcode <- 'ITS'
-FWD <- "CTTGGTCATTTAGAGGAAGTAA" 
+suffix <- '-ITS'
+prefix <- '2024-'
+FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones
 REV <- "GCTGCGTTCTTCATCGATGC"
 
-ncores <- 24
-path_data <- paste0('./2023/data/',barcode)
+ncores <- 48
+path_data <- paste0('./2023/data/',barcode) # change the YEAR
 path_raw <- paste0(path_data, '/0_raw')
 if(!dir.exists(path_raw)) message("create.directory.'/0_raw'")
 
-fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE))
+fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE)) # change ME to your path for RAW data
 fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
 
-(sample.names <- sapply(fnFs, get.sample.name, USE.NAMES = FALSE))
+# metadata where is your sample names
+meta <- read.csv("./2023/data/ITS/4_taxonomy_ITS/meta.csv", sep = ";")
+
+# The next steps work with a correctly formated(good names) metadata with the fastq files!
+
+# vector with the sample names
+sample_names <- meta$Sample_name  # Change 'Sample_name' to your actual column name
+sample_names <- sample_names[sample_names != ""]
+
+# Filter sample_names to keep only the ones found in fnFs
+valid_samples <- sample_names[sapply(sample_names, function(x) any(grepl(x, fnFs)))]
+
+# Find the position of each valid sample in fnFs
+indices <- sapply(valid_samples, function(x) {
+  match_idx <- grep(x, fnFs)
+  return(match_idx[1])  # Take the first match if multiple
+})
+
+# Sort valid samples based on their index in fnFs
+ordered_samples <- valid_samples[order(indices)]
+
+# Ensure ordered_samples has the same length as fnFs
+if (length(ordered_samples) != length(fnFs)) {
+  stop("Mismatch: ordered_samples and fnFs do not have the same length.")
+}
+# problem of metadata - looking for the differences
+unused_fnFs <- fnFs[!sapply(fnFs, function(path) any(grepl(paste(sample_names, collapse = "|"), path)))]
+
+# adding prefix - if needed
+# ordered_samples <- ifelse(grepl(paste0("^", prefix), ordered_samples), 
+# ordered_samples, 
+# paste0(prefix, ordered_samples))
+# adding suffix - if needed
+# ordered_samples <- ifelse(grepl(paste0(suffix, "$"), ordered_samples), 
+# ordered_samples, 
+#paste0(ordered_samples, suffix))
+# how it works: ifelse(test, yes, no) 
+
 # write_delim(data.frame(sample.names), paste0('data/sample_names_',barcode,'.tsv'))
 
 ########################
@@ -37,7 +76,8 @@ out.N <- filterAndTrim(fnFs, fnFs.filtN,
                          multithread = ncores)
 
 
-#head(out.N)
+head(out.N)
+rownames(out.N) <- ordered_samples # had vector names
 
 ###########################
 # 2. PRIMER REMOVAL ########
@@ -47,8 +87,8 @@ out.N <- filterAndTrim(fnFs, fnFs.filtN,
 primer_occurence(fnFs.filtN, fnRs.filtN, FWD, REV)
 
 ### CUTADAPT
-#cutadapt <- "/Users/jorondo/miniconda3/envs/cutadapt/bin/cutadapt" 
-# cutadapt <- '/cvmfs/soft.mugqic/CentOS6/software/cutadapt/cutadapt-2.10/bin/cutadapt' # CHANGE ME to the cutadapt path on your machine
+#cutadapt <-"/Users/alexisroy/miniconda3/envs/cutadapt/bin/cutadapt" # my computer
+cutadapt <- '/cvmfs/soft.mugqic/CentOS6/software/cutadapt/cutadapt-2.10/bin/cutadapt' # IP34. CHANGE ME to the cutadapt path on your machine
 system2(cutadapt, args = "--version") # Run shell commands from R
 
 path.cut <- file.path(path_data, "2_cutadapt")
@@ -68,7 +108,7 @@ R2.flags <- paste("-G", REV, "-A", FWD.RC)
 # Run Cutadapt multicore (each sample is run single-core)
 mclapply(seq_along(fnFs), run_cutadapt, mc.cores = ncores)
 
-# Check if it worked?
+# Check if it worked? Should be zero everywhere!
 primer_occurence(fnFs.cut, fnRs.cut, FWD, REV)
 
 ##############################
@@ -87,16 +127,20 @@ plotQualityProfile(cutRs[10:21])
 # Filter samples; define out files
 filtFs <- file.path(path_data, "3_filtered", basename(cutFs))
 filtRs <- file.path(path_data, "3_filtered", basename(cutRs))
-names(filtFs) <- sample.names
-names(filtRs) <- sample.names
+names(filtFs) <- ordered_samples
+names(filtRs) <- ordered_samples
 
 out <- filterAndTrim(cutFs, filtFs, cutRs, filtRs, 
-                     maxEE = c(2, 2), 
+                     maxEE = c(4, 4), # 4 instead of 2 for less agressive filter
                      truncQ = 2,
                      minLen = 100,
                      rm.phix = TRUE, 
                      compress = TRUE, 
                      multithread = ncores) 
+# (Change the parameters to your liking)
+
+rownames(out)<- ordered_samples # had vector names
+
 plotQualityProfile(filtFs[10:21])
 plotQualityProfile(filtRs[10:21])
 
@@ -109,10 +153,14 @@ plotQualityProfile(filtRs[10:21])
 filtFs_survived <- filtFs[file.exists(filtFs)]
 filtRs_survived <- filtRs[file.exists(filtRs)]
 
+
+# list files that did NOT survived
+names(filtFs[!file.exists(filtFs)])
+names(filtRs[!file.exists(filtRs)])
+
 # Learn errors from the data
 errF <- learnErrors(filtFs_survived, multithread = ncores)
 errR <- learnErrors(filtRs_survived, multithread = ncores)
-
 plotErrors(errF, nominalQ = TRUE)
 plotErrors(errR, nominalQ = TRUE)
 
@@ -120,18 +168,11 @@ plotErrors(errR, nominalQ = TRUE)
 dadaFs <- dada(filtFs_survived, err = errF, 
                pool = 'pseudo', multithread = ncores)
 dadaRs <- dada(filtRs_survived, err = errR, 
-               pool = 'pseudo', multithread = ncores)
+               pool = 'pseudo', multithread = ncores) # pseudo pool. putting all the error "rates" information together but a heuristic.
 
-# Modified version of mergePairs that rescues non-merged reads by concatenation
-# source('scripts/mergePairsRescue.R')
-mergers_pooled <- mergePairsRescue(
-  dadaFs, filtFs_survived, 
-  dadaRs, filtRs_survived,
-  returnRejects = TRUE,
-  minOverlap = 12,
-  maxMismatch = 0,
-  rescueUnmerged = TRUE
-)
+
+# merging
+merged <- mergePairs(dadaFs, filtFs_survived, dadaRs, filtRs_survived, verbose=TRUE)
 
 # Intersect the merge and concat; allows merge to fail when overlap is mismatched,
 # but recovers non-overlapping pairs by concatenating them. 
@@ -139,7 +180,7 @@ mergers_pooled <- mergePairsRescue(
 path.tax <- file.path(path_data, "4_taxonomy")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
-seqtab <- makeSequenceTable(mergers_pooled) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY
+seqtab <- makeSequenceTable(merged) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY
 
 # Remove chimeras
 seqtab.nochim <- removeBimeraDenovo(
@@ -159,7 +200,7 @@ track_change <- track_dada(out.N = out.N, out = out,
 track_change %>% 
   filter(values>=0) %>% 
   plot_track_change() %>% 
-  ggsave(paste0('out/change_ITS',barcode,'.pdf'), plot = ., 
+  ggsave(paste0('out/change_',barcode,'.pdf'), plot = ., 
          bg = 'white', width = 1600, height = 1200, 
          units = 'px', dpi = 180)
 

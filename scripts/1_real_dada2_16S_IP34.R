@@ -154,7 +154,7 @@ mergers <- mergePairs(
   verbose=TRUE)
 
 # Sequence table
-path.tax <- file.path(path_data, "4_taxonomy")
+path.tax <- file.path(path_data, "4_taxonomy_16S")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
 seqtab <- makeSequenceTable(mergers)
