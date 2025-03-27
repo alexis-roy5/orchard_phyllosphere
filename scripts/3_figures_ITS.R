@@ -6,6 +6,7 @@ library(phyloseq)
 library(readxl)
 library(rstatix)
 library(ggpubr)
+library(kableExtra)
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/myFunctions.R')
 
 
@@ -13,6 +14,71 @@ ps_ITS <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphe
 ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=0.9*min(sample_sums(ps_ITS)), replace=F)
 
 df.rarefied.ITS <- psmelt(ps.rarefied.ITS)
+
+################
+# ASV.SEQUENCE #
+################
+
+# Prep data
+ps.stats.prep <- function(ps, barcode) {
+  asv <- ps %>% otu_table 
+  seq_per_sam <- rowSums(asv)
+  asv_per_sam <- rowSums(asv>0)
+  asv_prevalence <- colSums(asv>0) # nb ASV se retrouve dans au moins N sample
+  num_sam <- nrow(asv)
+  tibble(
+    Dataset = barcode,
+    Seq = sum(asv),
+    ASVs = ncol(asv),
+    N = num_sam,
+    Mean_seq = mean(seq_per_sam),
+    SD_seq = sd(seq_per_sam),
+    Min_seq = min(seq_per_sam),
+    Max_seq = max(seq_per_sam),
+    Mean_asv = mean(asv_per_sam),
+    SD_asv = sd(asv_per_sam),
+    Min_asv = min(asv_per_sam),
+    Max_asv = max(asv_per_sam),
+    Mean_prev = mean(asv_prevalence),
+    SD_prev = sd(asv_prevalence),
+    Min_prev = min(asv_prevalence),
+    Max_prev = max(asv_prevalence)
+  )
+} 
+
+ps.stats <- ps.stats.prep(ps_ITS, "ITS") %>% 
+  mutate(across(where(is.numeric), ~ format(round(., 0),big.mark=',')))
+
+ps.stats.k <- kable(ps.stats, "html", align = "c") %>%
+  kable_styling(full_width = FALSE) %>%
+  add_header_above(c(
+    "Dataset" = 1,
+    "Sequences" = 1,
+    "ASVs" = 1,
+    "Samples" = 1,
+    "Mean ± SD" = 2, 
+    "[Min, Max]" = 2, 
+    "Mean ± SD" = 2, 
+    "[Min, Max]" = 2, 
+    "Mean ± SD" = 2, 
+    "[Min, Max]" = 2
+  )) %>%  
+  add_header_above(c(
+    " " = 4, 
+    "Sequences per sample" = 4, 
+    "ASVs per sample" = 4, 
+    "ASV prevalence" = 4
+  )) %>%
+  row_spec(0, extra_css = "display: none;")  # Hide the original column names
+
+
+html_file <- file.path("./2023/out/table_asv_sequence.html")
+save_kable(ps.stats.k, file = html_file)
+
+# Use webshot to convert the HTML file to PDF
+webshot(html_file, 
+        file.path("./2023/out/table_asv_sequence.html"),
+        cliprect = "viewport")
 
 ###############
 ## BAR CHART ##
@@ -29,10 +95,10 @@ melted.sample <- ps.rarefied.ITS %>%
   tax_glom(taxrank = which_taxrank) %>% 
   psmelt() %>% # "melts" the phyloseq object in a single table
   filter(Abundance != 0) %>% 
-  group_by(cultivar, time, orchard, type, practice, !!sym(which_taxrank)) %>% # summing the abundance of replicates for weighted mean
+  group_by(cultivar, time, orchard, type, practice, !!sym(which_taxrank)) %>% # summing the abundance of replicates for weighted mean. 
   summarise(Abundance = sum(Abundance),
             .groups = 'drop') %>% 
-  mutate(Sample = paste0(time,orchard,cultivar)) %>% 
+  mutate(Sample = paste0(time,orchard,cultivar)) %>% # grouping per individuals of same time, cultivar and orchard.
   ungroup %>% 
   group_by(Sample) %>% # compute relative abundance by sample:
   mutate(relAb = Abundance/sum(Abundance))

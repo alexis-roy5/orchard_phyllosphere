@@ -1,7 +1,7 @@
 library(pacman)
 library("readxl")  
 p_load(tidyverse, phyloseq, magrittr, decontam, Biostrings)
-source("https://github.com/jorondo1/misc_scripts/raw/refs/heads/main/tax_glom2.R")
+source("https://github.com/jorondo1/misc_scripts/raw/refs/heads/main/phyloseq_functions.R")
 
 
 ##########
@@ -12,12 +12,14 @@ setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllos
 path.out.ps <- "./2023/out/"
 
 # Metadata
-meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Metadata") # change ME to your Metadata sheet/file
+meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Metadata") # change ME to your Metadata sheet/file
 meta <- meta_raw %>%
-  mutate(unique = str_remove(unique, "-16S" )) 
+  mutate(unique = str_remove(unique, "-16S" ),
+         TreeID = str_extract(unique, "(...)-(..)-")) %>% 
+  unite("TreeID", TreeID, replicate, sep = "", remove = FALSE)
 
 
-meta_samples <- meta %>% 
+meta_samples <- meta %>% meta_samples <- meta %>% replicate
   filter(time != "None" & control == 'FALSE')
 
 meta_ctrl <- meta %>% 
@@ -29,7 +31,7 @@ ctrl.names <- meta_ctrl$unique
 
 
 # adding DNA concetration to the meatadata
-  DNA_meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Biomol")
+  DNA_meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Biomol")
   
   DNA_meta <- DNA_meta_raw %>%
     select(unique, Concentration = `ng/ul`) %>%
@@ -110,8 +112,8 @@ asv_to_fasta(seqtab_16S_sam_filt, file.path(path_16S, '4_taxonomy/asv.fa'))
 ###########
 
 path_ITS <- './2023/data/ITS/'
-taxa_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS/taxonomy.RDS'))
-seqtab_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS/seqtab.RDS'))
+taxa_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS_real/taxonomy.RDS'))
+seqtab_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS_real/seqtab.RDS'))
 
 rownames(seqtab_ITS) <- paste0("2023-", rownames(seqtab_ITS)) # adding the prefix '2023_' because it was missing from the start (raw_data) )
 

@@ -1,12 +1,13 @@
-#######################################
-# calculer BC distance for réplicats #
-###################################### 
+#############################################
+# calculer BC distance for tree individuals #
+#############################################
 
 library(tidyverse)
 library(phyloseq)
 library(vegan)
 
 # rarefied ps_object
+ps_ITS <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_ITS.rds")
 ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=0.9*min(sample_sums(ps_ITS)), replace=F)
 
 df.meta <- data.frame(sample_data(ps.rarefied.ITS)) %>%
@@ -23,6 +24,7 @@ df.otu <- as.data.frame(ps.rarefied.ITS@otu_table) %>%
   
 # stratégie, extraire les noms qui sont communs au réplicats pour les traiter comme 1 seul sample par la suite
 df.otu$Sample_transform <- str_extract(df.otu$Sample, "2023-[1-3]-(...)-(..)-(..)") # extract the name from each ex: 
+# for orchard_cultivar_type
 
 # counts of réplicats in a table
 sample_counts <- table(df.otu$Sample_transform)
@@ -83,7 +85,8 @@ mean.sd <- left_join(mean.BC.sample, sd.BC.sample, by = "newID")
 meta.mean.BC <- left_join(mean.sd, df.meta, by = "newID")
 
 # plot
-ggplot(mean.sd) +
+ggplot(meta.mean.BC) +
   geom_histogram(aes(x = Mean.BC), bins = 30)
 
-sample_data(ps_ITS)
+ggplot(meta.mean.BC) +
+  geom_boxplot(aes(x=time, y=Mean.BC))
