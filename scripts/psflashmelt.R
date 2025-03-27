@@ -1,5 +1,13 @@
-function (physeq) 
-{
+# the original psmelt function, but optimized using data.table and dplyr syntax
+# should be insanely faster than the original
+# shamelessly AI generated
+# Creates a much smaller table because it omits every row for which Abundance == 0
+
+psmelt_dt <- function(physeq) {
+  if (!requireNamespace("data.table", quietly = TRUE)) {
+    stop("Package 'data.table' needed for this function. Please install it.")
+  }
+  
   if (!inherits(physeq, "phyloseq")) {
     rankNames = NULL
     sampleVars = NULL
@@ -36,30 +44,39 @@ function (physeq)
             paste0(new2, collapse = ", "), "\n", "to avoid conflicts with taxonomic rank names.")
     colnames(sample_data(physeq))[wh2] <- new2
   }
+  
+  # 
   otutab = otu_table(physeq)
   if (!taxa_are_rows(otutab)) {
     otutab <- t(otutab)
   }
-  mdf = reshape2::melt(as(otutab, "matrix"))
-  colnames(mdf)[1] <- "OTU"
-  colnames(mdf)[2] <- "Sample"
-  colnames(mdf)[3] <- "Abundance"
-  mdf$OTU <- as.character(mdf$OTU)
-  mdf$Sample <- as.character(mdf$Sample)
+  
+  # Convert to long format using tidyverse approach
+  mdf <- as(otutab, "matrix") %>%
+    tibble::as_tibble(rownames = "OTU") %>%
+    tidyr::pivot_longer(cols = -OTU, names_to = "Sample", values_to = "Abundance") %>%
+    dplyr::filter(Abundance > 0)
+  
+  # Sample data merge
   if (!is.null(sampleVars)) {
-    sdf = data.frame(sample_data(physeq), stringsAsFactors = FALSE)
-    sdf$Sample <- sample_names(physeq)
-    mdf <- merge(mdf, sdf, by.x = "Sample")
+    sdf <- sample_data(physeq) %>% 
+      as("data.frame") %>% 
+      tibble::rownames_to_column("Sample")
+    mdf <- dplyr::left_join(mdf, sdf, by = "Sample")
   }
+  
+  # Tax table merge
   if (!is.null(rankNames)) {
     TT = access(physeq, "tax_table")
     keepTTcols <- colSums(is.na(TT)) < ntaxa(TT)
     if (length(which(keepTTcols)) > 0 & ncol(TT) > 0) {
-      TT <- TT[, keepTTcols]
-      tdf = data.frame(TT, OTU = taxa_names(physeq))
-      mdf <- merge(mdf, tdf, by.x = "OTU")
+      tdf <- TT[, keepTTcols] %>%
+        as("matrix") %>%
+        tibble::as_tibble(rownames = "OTU")
+      mdf <- dplyr::left_join(mdf, tdf, by = "OTU")
     }
   }
-  mdf = mdf[order(mdf$Abundance, decreasing = TRUE), ]
-  return(mdf)
+  
+  mdf <- dplyr::arrange(mdf, desc(Abundance))
+  return(as.data.frame(mdf))
 }
