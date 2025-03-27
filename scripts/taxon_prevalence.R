@@ -18,7 +18,7 @@ melted %>%
     arrange(desc(n))
 
 # vs. Genera of most prevalent ASVs ? 
-asv_prevalence_table <- function(filtered_table, taxRank, num = Inf) 
+asv_prevalence_table <- function(filtered_table, taxRank, num = Inf) {
   filtered_table %>% 
     select(Sample, Abundance, !!sym(taxRank), OTU) %>% 
     group_by(OTU, !!sym(taxRank)) %>% 
