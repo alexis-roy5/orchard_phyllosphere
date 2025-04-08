@@ -10,8 +10,7 @@ source('./scripts/myFunctions.R')
 # CONFIG
 barcode <- 'ITS'
 suffix <- '-ITS'
-prefix <- '2024-'
-FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones
+FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones ?
 REV <- "GCTGCGTTCTTCATCGATGC"
 
 ncores <- 48
