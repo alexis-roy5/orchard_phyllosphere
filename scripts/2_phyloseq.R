@@ -18,28 +18,16 @@ meta <- meta_raw %>%
   unite("TreeID", TreeID, replicate, sep = "", remove = FALSE)
 
 
-meta_samples <- meta %>% meta_samples <- meta %>% replicate
-  filter(time != "None" & control == 'FALSE')
-
-meta_ctrl <- meta %>% 
-  filter(time =="None" | control=='TRUE')
-  
-sample.names.phylo <- meta_samples$unique
-ctrl.names <- meta_ctrl$unique
-
-
-
 # adding DNA concetration to the meatadata
-  DNA_meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Biomol")
-  
-  DNA_meta <- DNA_meta_raw %>%
-    select(unique, Concentration = `ng/ul`) %>%
-    as.data.frame() 
-  
-samples <- left_join(meta, DNA_meta, by = "unique") %>% 
-  column_to_rownames("unique") 
-  
-  
+DNA_meta_raw <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Biomol")
+
+DNA_meta <- DNA_meta_raw %>%
+  select(unique, Concentration = `ng/ul`) %>%
+  as.data.frame() 
+
+samples_meta <- left_join(meta, DNA_meta, by = "unique")
+
+
 #########
 # 16S ####
 ###########
@@ -78,8 +66,8 @@ seqtab_16S_sam_filt <- remove_ultra_rare(seqtab_16S_sam, taxa_16S_sam, 4000)
 dim(seqtab_16S_sam); dim(seqtab_16S_sam_filt); dim(taxa_16S_sam)
 
 
-  # Finding the sample that are near-empty 
-    setdiff(rownames(seqtab_16S_sam), rownames(seqtab_16S_sam_filt)) 
+# Finding the sample that are near-empty 
+setdiff(rownames(seqtab_16S_sam), rownames(seqtab_16S_sam_filt)) 
 
 # Phyloseq object
 ps_16S <- phyloseq(
@@ -98,10 +86,15 @@ path_ITS <- './2023/data/ITS/'
 taxa_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS_real/taxonomy.RDS'))
 seqtab_ITS <- read_rds(file.path(path_ITS, '4_taxonomy_ITS_real/seqtab.RDS'))
 
-rownames(seqtab_ITS) <- paste0("2023-", rownames(seqtab_ITS)) # adding the prefix '2023_' because it was missing from the start (raw_data) )
+# add sequencing depth to sample data
+samples_meta_updated <- seqtab_ITS %>% 
+  rowSums() %>% 
+  data.frame(seqDepth = .) %>% 
+  rownames_to_column(var = "sample") %>% 
+  left_join(samples_meta,. ,by = "sample") %>% column_to_rownames(var = "sample")
 
 # Keep samples with metadata info
-seqtab_ITS_sam <- subset_samples(seqtab_ITS, sample.names.phylo) # s'assurer que les infos de noms sont identiques pour 16S, ITS, trnl, etc.
+seqtab_ITS_sam <- subset_samples(seqtab_ITS, samples_meta$sample) # s'assurer que les infos de noms sont identiques pour 16S, ITS, trnl, etc.
 
 # Subset ASVs (ex: 100 hits)
 taxa_ITS_sam <- subset_asvs(taxa_ITS, seqtab_ITS_sam, 10)
@@ -125,7 +118,7 @@ setdiff(rownames(seqtab_ITS_sam), rownames(seqtab_ITS_sam_filt))
 ps_ITS <- phyloseq(
   tax_table(taxa_ITS_sam),
   otu_table(seqtab_ITS_sam_filt, taxa_are_rows = FALSE),
-  sample_data(samples)
-  )
+  sample_data(samples_meta_updated)
+)
 
 saveRDS(ps_ITS, paste0(path.out.ps, "ps_ITS.rds"))
