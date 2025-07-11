@@ -5,7 +5,7 @@ source("https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/
 
 
 ps_ITS <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_ITS.rds")
-ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=0.9*min(sample_sums(ps_ITS)), replace=F)
+ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=2500, replace=F)
 # raréfaction à 2257 séquences
 # rngseed: le nombre donner à set_seed pour un processus aléatoire qui est pas un processus aléatoire. 
 
@@ -182,7 +182,7 @@ subset_ps_by_condition <- function(ps, condition) {
 
 # apply with imap
   # results of subset
-subset_ps_list <- purrr::imap(conditions, ~ subset_ps_by_condition(ps_ITS, .x))
+subset_ps_list <- purrr::imap(conditions, ~ subset_ps_by_condition(ps.rarefied.ITS, .x))
 
 # name results based on conditions
 names(subset_ps_list) <- sapply(conditions, paste, collapse = "_")

@@ -4,7 +4,7 @@ p_load(tidyverse, phyloseq, readxl, rstatix, ggpubr, kableExtra, patchwork, car,
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/myFunctions.R')
 
 ps_ITS <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_ITS.rds")
-ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=0.9*min(sample_sums(ps_ITS)), replace=F)
+ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=2500, replace=F)
 
 df.rarefied.ITS <- psmelt(ps.rarefied.ITS)
 
@@ -39,7 +39,7 @@ ps.stats.prep <- function(ps, barcode) {
   )
 } 
 
-ps.stats <- ps.stats.prep(ps_ITS, "ITS") %>% 
+ps.stats <- ps.stats.prep(ps.rarefied.ITS, "ITS") %>% 
   mutate(across(where(is.numeric), ~ format(round(., 0),big.mark=',')))
 
 ps.stats.k <- kable(ps.stats, "html", align = "c") %>%
@@ -65,7 +65,7 @@ ps.stats.k <- kable(ps.stats, "html", align = "c") %>%
   row_spec(0, extra_css = "display: none;")  # Hide the original column names
 
 
-html_file <- file.path("./2023/out/table_asv_sequence.html")
+html_file <- file.path("./2023/out/table_asv_sequence_rarefaction.html")
 save_kable(ps.stats.k, file = html_file)
 
 # Use webshot to convert the HTML file to PDF
@@ -77,7 +77,7 @@ webshot(html_file,
 ## BAR CHART ##
 ###############
 
-which_taxrank <- 'Order'
+which_taxrank <- 'Genus'
 
 # Agglomerate ps object and melt into a long data frame
   # it cannot be in the function because we need
