@@ -10,8 +10,7 @@ source('./scripts/myFunctions.R')
 # CONFIG
 barcode <- 'ITS'
 suffix <- '-ITS'
-prefix <- '2024-'
-FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones
+FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones ?
 REV <- "GCTGCGTTCTTCATCGATGC"
 
 ncores <- 48
@@ -23,7 +22,7 @@ fnFs <- sort(list.files(path_raw, pattern="_R1_001.fastq", full.names = TRUE)) #
 fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
 
 # metadata where is your sample names
-meta <- read_excel("./2023/data/ITS/4_taxonomy_ITS_real/Verger_2023_1.xlsx", sheet = "Metadata")
+meta <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Metadata")
 
 # The next steps work with a correctly formated (good names) metadata with the fastq files!
 
@@ -74,7 +73,8 @@ fnRs.filtN <- file.path(path_data, "1_filtN", basename(fnRs))
 out.N <- filterAndTrim(fnFs, fnFs.filtN,
                          fnRs, fnRs.filtN, 
                          rm.lowcomplex = TRUE, # added because of https://github.com/benjjneb/dada2/issues/2045#issuecomment-2452299127
-                         maxN = 0, 
+                         maxN = 0,
+                         verbose = TRUE,
                          multithread = ncores)
 
 
@@ -163,8 +163,6 @@ names(filtRs[!file.exists(filtRs)])
 # Learn errors from the data
 errF <- learnErrors(filtFs_survived, multithread = ncores)
 errR <- learnErrors(filtRs_survived, multithread = ncores)
-plotErrors(errF, nominalQ = TRUE)
-plotErrors(errR, nominalQ = TRUE)
 
 # Infer sample composition
 dadaFs <- dada(filtFs_survived, err = errF, 
@@ -179,7 +177,7 @@ merged <- mergePairs(dadaFs, filtFs_survived, dadaRs, filtRs_survived, verbose=T
 # Intersect the merge and concat; allows merge to fail when overlap is mismatched,
 # but recovers non-overlapping pairs by concatenating them. 
 # Motivated by https://github.com/benjjneb/dada2/issues/537#issuecomment-412530338
-path.tax <- file.path(path_data, "4_taxonomy_ITS_real")
+path.tax <- file.path(path_data, "4_taxonomy_ITS")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
 seqtab <- makeSequenceTable(merged) # makeSequenceTable(dadaFs) ## to use FWD READS ONLY

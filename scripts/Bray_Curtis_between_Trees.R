@@ -1,7 +1,8 @@
 #############################################
 # calculer BC distance for tree individuals #
 #############################################
-
+# une matrice de bray-curtis par groupe de treeID
+# trouver les dissimilaritées à travers les groupes
 library(tidyverse)
 library(phyloseq)
 library(vegan)
@@ -54,7 +55,6 @@ calculate_bray_curtis <- function(df) {
 BC.rep <- lapply(dfs_list, calculate_bray_curtis)
 
 
-
 # function for mean
 calculate_mean <- function(df) {
   avg <- df %>% as.vector %>% mean   # calculate the mean
@@ -81,12 +81,45 @@ sd.BC.sample <- map_dfr(BC.rep, function(dataframe) calculate_sd(dataframe)) %>%
 mean.sd <- left_join(mean.BC.sample, sd.BC.sample, by = "newID")
 # NA = 2 sample
 
-
+# add meta data
 meta.mean.BC <- left_join(mean.sd, df.meta, by = "newID")
 
-# plot
-ggplot(meta.mean.BC) +
-  geom_histogram(aes(x = Mean.BC), bins = 30)
+# no mean, all sample
+vector.sample <- function(dataframe){
+  bray_curtis_sample <- dataframe %>% as.vector()
+}
 
-ggplot(meta.mean.BC) +
-  geom_boxplot(aes(x=time, y=Mean.BC))
+# list of vectors containing Bray_Curtis dissimilarities
+all.BC <- imap(BC.rep, function(dataframe.sample, .y) {vector.sample(dataframe.sample)})
+
+result_df <- data.frame(
+  newID = names(all.BC),
+  col1 = sapply(all.BC, function(x) x[1]),
+  col2 = sapply(all.BC, function(x) x[2]),
+  col3 = sapply(all.BC, function(x) x[3])
+)
+
+
+meta.all.BC <- left_join(result_df, df.meta %>% select(-TreeID),by = "newID") %>% 
+  unique %>% 
+  pivot_longer(
+    cols = c(col1, col2, col3),
+    names_to = "column",
+    values_to = "Bray_Curtis")
+
+# plot
+ggplot(meta.all.BC %>% 
+         mutate(time = factor(time, levels = c("May", "July", "August")))) +
+  geom_boxplot(aes(x=time, y=Bray_Curtis)) +
+  xlab("Time") +
+  ylab("Bray Curtis Dissimilarities") +
+  theme(axis.text.x = element_text(size = 12),
+        axis.text.y = element_text(size = 12), 
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12))
+
+
+ggsave("Bray_Curtis_Across_Tree_ID.png", units = "px", dpi = 300)
+
+# communauté plus individualisés. Les individus similaires se ressemblent moins en début de saison qu'en fin de saison. 
+
