@@ -1,6 +1,6 @@
 # Compute taxon prevalence, top 5 genera
 library(pacman)
-p_load(tidyverse, magrittr)
+p_load(tidyverse, magrittr, kableExtra)
 source("https://github.com/jorondo1/misc_scripts/raw/refs/heads/main/psflashmelt.R")
 
 (ps <- readRDS('2023/out/ps_ITS.rds'))

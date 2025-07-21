@@ -15,7 +15,7 @@ library(RColorBrewer)
 library(ggdist)
 
 
-setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere")
+# setwd("/Users/alexisroy/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere")
 
 ps_16S <- readRDS("./2023/out/ps_16S.rds")
 
@@ -49,8 +49,8 @@ ps.rarefied = rarefy_even_depth(ps_16S, rngseed=1, sample.size=0.9*min(sample_su
 
 
 # faire fondre l'objet phyloseq
-phylo.df <- psmelt(ps_16S) # pour comparaison
-phylo.rarefied.df <- psmelt(ps.rarefied)
+phylo.df <- psflashmelt(ps_16S) # pour comparaison
+phylo.rarefied.df <- psflashmelt(ps.rarefied)
 
 dim(phylo.df) # voir différences entre raréfié et non raréfié
 dim(phylo.rarefied.df)
