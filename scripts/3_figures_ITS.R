@@ -2,9 +2,10 @@
 library(pacman)
 p_load(tidyverse, phyloseq, readxl, rstatix, ggpubr, kableExtra, patchwork, car, RColorBrewer, ggh4x, broom)
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/myFunctions.R')
+source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/community_functions.R')
 
-ps_ITS <- readRDS("~/Documents/1_Université/Stages/Labo_ILL/orchard_phyllosphere/2023/out/ps_ITS.rds")
-ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=2500, replace=F)
+ps_ITS <- readRDS("2023/out/ps_ITS.rds")
+ps.rarefied.ITS = rarefy_even_depth(ps_ITS, rngseed=1, sample.size=0.9*min(sample_sums(ps_ITS)), replace=F)
 
 df.rarefied.ITS <- psmelt(ps.rarefied.ITS)
 
