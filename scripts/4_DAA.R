@@ -21,31 +21,31 @@ ps.leaf <- subset_samples(
 
 # # ANCOM model
 # Execute this once then save it below
-ancom_flower.out <- ancombc2(
-  data = ps.flower,
-  prv_cut = 0.10,
-  fix_formula="practice + cultivar",
-  #rand_formula = "(1 | TreeID)", # Not possible with this subset
-  group = "practice", # specify group if >=3 groups exist, allows structural zero detection
-  struc_zero = TRUE,
-  alpha = 0.01,
-  pairwise = TRUE,
-  verbose = TRUE,
-  n_cl = 8 # cores for parallel computing
-)
-
-ancom_leaf.out <- ancombc2(
-  data = ps.leaf,
-  prv_cut = 0.10,
-  fix_formula="practice + cultivar",
-  #  rand_formula = "(1 | TreeID)",
-  group = "practice", # specify group if >=3 groups exist, allows structural zero detection
-  struc_zero = TRUE,
-  alpha = 0.01,
-  pairwise = TRUE,
-  verbose = TRUE,
-  n_cl = 8 # cores for parallel computing
-)
+# ancom_flower.out <- ancombc2(
+#   data = ps.flower,
+#   prv_cut = 0.10,
+#   fix_formula="practice + cultivar",
+#   #rand_formula = "(1 | TreeID)", # Not possible with this subset
+#   group = "practice", # specify group if >=3 groups exist, allows structural zero detection
+#   struc_zero = TRUE,
+#   alpha = 0.01,
+#   pairwise = TRUE,
+#   verbose = TRUE,
+#   n_cl = 8 # cores for parallel computing
+# )
+# 
+# ancom_leaf.out <- ancombc2(
+#   data = ps.leaf,
+#   prv_cut = 0.10,
+#   fix_formula="practice + cultivar",
+#   #  rand_formula = "(1 | TreeID)",
+#   group = "practice", # specify group if >=3 groups exist, allows structural zero detection
+#   struc_zero = TRUE,
+#   alpha = 0.01,
+#   pairwise = TRUE,
+#   verbose = TRUE,
+#   n_cl = 8 # cores for parallel computing
+# )
 
 # write_rds(ancom_leaf.out, '2023/data/ITS/DAA/ancom_Genus_leaf.rds')
 # write_rds(ancom_flower.out, '2023/data/ITS/DAA/ancom_Genus_flower.rds')
@@ -112,6 +112,8 @@ ancom_plot_data <- function(ancom_filtered, ps) {
 
 # Main plotting function
 plot_ancom <- function(plot_data, taxLvl_palette, tile_rank) {
+  
+  plot_data <- droplevels(plot_data)
   
   # create alternating Grey-white background for plot
   bg_waterfall_data <- plot_data %>%
@@ -193,13 +195,15 @@ leaf_plot_data <- ancom_plot_data(leaf_filtered, ps.leaf)
 flower_plot_data <- ancom_plot_data(flower_filtered, ps.flower)
 
 # PLOTS : 
-plot_ancom(leaf_plot_data,
-           taxLvl_palette = 'Set3',
+
+leaf_plot_data %>% 
+  filter(lfc>=1 | lfc <= -1) %>% 
+  plot_ancom(taxLvl_palette = 'Set3',
            tile_rank = 'Phylum')
 ggsave('2023/out/DAA_leaf_genus_phylum.pdf', 
        bg = 'white', width = 1600, height = 2000, 
        units = 'px', dpi = 220)
-
+theme(panel.grid = )
 plot_ancom(flower_plot_data, 
            taxLvl_palette = 'Set3',
            tile_rank = 'Phylum')
@@ -207,8 +211,9 @@ ggsave('2023/out/DAA_flower_genus_phylum.pdf',
        bg = 'white', width = 1600, height = 2000, 
        units = 'px', dpi = 220)
 
-plot_ancom(leaf_plot_data, 
-           taxLvl_palette = 'Set1',
+leaf_plot_data %>% 
+  filter(lfc>=1 | lfc <= -1) %>% 
+  plot_ancom(taxLvl_palette = 'Set1',
            tile_rank = 'Class')
 ggsave('2023/out/DAA_leaf_genus_class.pdf', 
        bg = 'white', width = 1600, height = 2000, 
