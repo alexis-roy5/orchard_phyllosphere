@@ -1,6 +1,6 @@
 ## phyloseq pipeline ##
 library(pacman)
-p_load(tidyverse, phyloseq, magrittr, kableExtra, Biostrings, readxl)
+p_load(tidyverse, phyloseq, magrittr, kableExtra, Biostrings, readxl, writexl)
 source("https://github.com/jorondo1/misc_scripts/raw/refs/heads/main/phyloseq_functions.R")
 
 
@@ -52,7 +52,10 @@ seqtab_ITS_sam_filt <- remove_ultra_rare(seqtab_ITS_sam, taxa_ITS_sam, 2000)
 dim(seqtab_ITS_sam); dim(seqtab_ITS_sam_filt); dim(taxa_ITS_sam)
 
 # finding the sample that are near-empty 
-setdiff(rownames(seqtab_ITS_sam), rownames(seqtab_ITS_sam_filt))
+near_empty_samples <- tibble("unique" = setdiff(rownames(seqtab_ITS_sam), rownames(seqtab_ITS_sam_filt))) %>% 
+  mutate(unique = paste0("2023-", unique))
+near_empty_samples_metadata <- left_join(near_empty_samples, samples_meta_updated, by = "unique") #add metadata
+write_xlsx(near_empty_samples_metadata, paste0(path.out.ps, "near_empty_samples_metadata.xlsx"))
 
 # phyloseq objects
 ps_ITS <- phyloseq(
@@ -76,12 +79,14 @@ saveRDS(ps.rarefied.ITS, paste0(path.out.ps, "ps_ITS_rarefied.rds"))
 ################
 # goal: prepare a table with information of ASV and sequences
 # prep data
+
 ps.stats.prep <- function(ps, barcode) {
-  asv <- ps %>% otu_table 
+  asv <- ps %>% otu_table()
   seq_per_sam <- rowSums(asv)
-  asv_per_sam <- rowSums(asv>0)
-  asv_prevalence <- colSums(asv>0) # nb ASV se retrouve dans au moins N sample
+  asv_per_sam <- rowSums(asv > 0)
+  asv_prevalence <- colSums(asv > 0)
   num_sam <- nrow(asv)
+  
   tibble(
     Dataset = barcode,
     Seq = sum(asv),
@@ -100,34 +105,56 @@ ps.stats.prep <- function(ps, barcode) {
     Min_prev = min(asv_prevalence),
     Max_prev = max(asv_prevalence)
   )
-} 
+}
 
-# execute computations
-ps.stats <- ps.stats.prep(ps.rarefied.ITS, "ITS") %>% 
-  mutate(across(where(is.numeric), ~ format(round(., 0),big.mark=',')))
+stats.function <- function(..., names) {
+  # ... allows passing multiple phyloseq objects
+  ps_list <- list(...)
+  
+  if (missing(names)) {
+    names(ps_list) <- paste0("Dataset_", seq_along(ps_list))
+  } else {
+    names(ps_list) <- names
+  }
+  
+  # compute stats for all
+  stats_all <- purrr::map2_dfr(
+    ps_list,
+    names(ps_list),
+    ~ ps.stats.prep(.x, .y)
+  ) %>%
+    mutate(across(where(is.numeric), ~ format(round(., 0), big.mark = ",")))
+  
+  # create the kable table
+  ps.stats.k <- kable(stats_all, "html", align = "c") %>%
+    kable_styling(full_width = FALSE) %>%
+    add_header_above(c(
+      "Dataset" = 1,
+      "Sequences" = 1,
+      "ASVs" = 1,
+      "Samples" = 1,
+      "Mean ± SD" = 2, 
+      "[Min, Max]" = 2, 
+      "Mean ± SD" = 2, 
+      "[Min, Max]" = 2, 
+      "Mean ± SD" = 2, 
+      "[Min, Max]" = 2
+    )) %>%  
+    add_header_above(c(
+      " " = 4, 
+      "Sequences per sample" = 4, 
+      "ASVs per sample" = 4, 
+      "ASV prevalence" = 4
+    )) %>%
+    row_spec(0, extra_css = "display: none;")
+  
+  # save the table
+  xlsx_file <- file.path("./2023/out/", "table_asv_sequence_rarefaction_combined.xlsx")
+  write_xlsx(stats_all, path = xlsx_file)
+  
+}
 
-ps.stats.k <- kable(ps.stats, "html", align = "c") %>%
-  kable_styling(full_width = FALSE) %>%
-  add_header_above(c( # format table
-    "Dataset" = 1,
-    "Sequences" = 1,
-    "ASVs" = 1,
-    "Samples" = 1,
-    "Mean ± SD" = 2, 
-    "[Min, Max]" = 2, 
-    "Mean ± SD" = 2, 
-    "[Min, Max]" = 2, 
-    "Mean ± SD" = 2, 
-    "[Min, Max]" = 2
-  )) %>%  
-  add_header_above(c(
-    " " = 4, 
-    "Sequences per sample" = 4, 
-    "ASVs per sample" = 4, 
-    "ASV prevalence" = 4
-  )) %>%
-  row_spec(0, extra_css = "display: none;")  # Hide the original column names
+# use stats.function
+stats.function(ps_ITS, ps.rarefied.ITS, names = c("ITS", "ITS_rarefied"))
 
-
-html_file <- file.path("./2023/out/table_asv_sequence_rarefaction.html") # path for table
-save_kable(ps.stats.k, file = html_file) # save
+       

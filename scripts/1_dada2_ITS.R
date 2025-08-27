@@ -2,14 +2,14 @@
 #  ml StdEnv/2023 r/4.4.0 mugqic/cutadapt/2.10
 setwd("/home/def-ilafores/analysis/orchard_phyllosphere") # change ME to your beginning directory 
 
+# load libraries
 library(pacman)
 p_load(dada2, tidyverse, Biostrings, ShortRead, parallel, readxl)
-source('./scripts/myFunctions.R')
+source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/myFunctions.R') # to change
 
 
 # CONFIG
 barcode <- 'ITS'
-suffix <- '-ITS'
 FWD <- "CTTGGTCATTTAGAGGAAGTAA" # Is it the good ones ?
 REV <- "GCTGCGTTCTTCATCGATGC"
 
@@ -24,8 +24,8 @@ fnRs <- sort(list.files(path_raw, pattern="_R2_001.fastq", full.names = TRUE))
 # metadata where is your sample names
 meta <- read_excel("./2023/data/ITS/4_taxonomy_ITS/Verger_2023_1.xlsx", sheet = "Metadata")
 
-# The next steps work with a correctly formated (good names) metadata with the fastq files!
-
+# The next steps work with a correctly formated (good names) metadata with the fastq files
+# goal: associate good names (metadata) with fastq file.
 # vector with the sample names
 sample_names <- meta$sample  # Change 'Sample_name' to your actual column name
 sample_names <- sample_names[sample_names != ""] # If nothing in the column, do not keep it!
@@ -51,17 +51,6 @@ pattern <- paste(sample_names, collapse = "|")
 used_fnFs <- sapply(fnFs, function(path) grepl(pattern, path))
 unused_fnFs <- fnFs[!used_fnFs]
 
-# adding prefix - if needed
-# ordered_samples <- ifelse(grepl(paste0("^", prefix), ordered_samples), 
-# ordered_samples, 
-# paste0(prefix, ordered_samples))
-# adding suffix - if needed
-# ordered_samples <- ifelse(grepl(paste0(suffix, "$"), ordered_samples), 
-# ordered_samples, 
-#paste0(ordered_samples, suffix))
-# how it works: ifelse(test, yes, no) 
-
-# write_delim(data.frame(sample.names), paste0('data/sample_names_',barcode,'.tsv'))
 
 ########################
 # 1. N-FILTERING ########
@@ -174,9 +163,6 @@ dadaRs <- dada(filtRs_survived, err = errR,
 # merging
 merged <- mergePairs(dadaFs, filtFs_survived, dadaRs, filtRs_survived, verbose=TRUE)
 
-# Intersect the merge and concat; allows merge to fail when overlap is mismatched,
-# but recovers non-overlapping pairs by concatenating them. 
-# Motivated by https://github.com/benjjneb/dada2/issues/537#issuecomment-412530338
 path.tax <- file.path(path_data, "4_taxonomy_ITS")
 if(!dir.exists(path.tax)) dir.create(path.tax)
 
