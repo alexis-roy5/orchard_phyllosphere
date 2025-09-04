@@ -85,44 +85,44 @@ Create a function that generates PCoA dataframe, eigen values, and permanova res
 ```{r}
 # Name the function "df.func" and its input (a subset of the main phyloseq object)
 df.func <- function(sub){
-# Phyloseq variance stabilizing transformation with blind transformation
-dds<-phyloseq_to_deseq2(sub,~practice) 
-# Create function for computation (taken from online website of phyloseq)
-gm_mean <- function(x, na.rm=TRUE){
-  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
-# Estimate factor size
-dds = estimateSizeFactors(dds, geoMeans = apply(counts(dds), 1, gm_mean))
-# Blind version for all treatments
-blind <- DESeq2::varianceStabilizingTransformation(dds, blind=T)
-# Extract transformed asv table
-mat <- SummarizedExperiment::assay(blind) 
-# Transpose matrix
-mat<-t(mat)
-# Set values <0 to 0
-mat[which(mat<0)]<-0  
-# Compute the dissimilarity matrix (Bray-Curtis) 
-dis.mx <- vegan::vegdist(mat, method = "bray")
-# Ordination (multidimentional scaling) 
-PCOA <- capscale(dis.mx~1, distance = "bray")
-# Extract eigen values
-eig <- round(PCOA$CA$eig[1:3]/sum(PCOA$CA$eig), 2) 
-# Prepare a dataframe to plot
-# Extract sample_data
-pcoa.df <- data.frame(sample_data(sub))
-# Create a PCo1 column
-pcoa.df$PCo1 <- scores(PCOA)$sites[,1]
-# Create a PCo2 column
-pcoa.df$PCo2 <- scores(PCOA)$sites[,2]
-# Number of permutation
-perm <- with(pcoa.df, how(nperm=999, blocks = TreeID)) 
-# Perform permanova
-adonis.results <- adonis2(mat ~ (practice/site)*time+(practice/site)*cultivar, #site is nested within practice
-        data = data.frame(pcoa.df),
-        permutations = perm, method="bray") 
-# Extract permutation results in a data frame
-adonis.df <- as.data.frame(adonis.results)
-# Return wanted results
-return(list(res1=eig, res2 = pcoa.df, res3 = dis.mx, res4 = adonis.df))
+  # Phyloseq variance stabilizing transformation with blind transformation
+  dds<-phyloseq_to_deseq2(sub,~practice) 
+  # Create function for computation (taken from online website of phyloseq)
+  gm_mean <- function(x, na.rm=TRUE){
+    exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
+  # Estimate factor size
+  dds = estimateSizeFactors(dds, geoMeans = apply(counts(dds), 1, gm_mean))
+  # Blind version for all treatments
+  blind <- DESeq2::varianceStabilizingTransformation(dds, blind=T)
+  # Extract transformed asv table
+  mat <- SummarizedExperiment::assay(blind) 
+  # Transpose matrix
+  mat<-t(mat)
+  # Set values <0 to 0
+  mat[which(mat<0)]<-0  
+  # Compute the dissimilarity matrix (Bray-Curtis) 
+  dis.mx <- vegan::vegdist(mat, method = "bray")
+  # Ordination (multidimentional scaling) 
+  PCOA <- capscale(dis.mx~1, distance = "bray")
+  # Extract eigen values
+  eig <- round(PCOA$CA$eig[1:3]/sum(PCOA$CA$eig), 2) 
+  # Prepare a dataframe to plot
+  # Extract sample_data
+  pcoa.df <- data.frame(sample_data(sub))
+  # Create a PCo1 column
+  pcoa.df$PCo1 <- scores(PCOA)$sites[,1]
+  # Create a PCo2 column
+  pcoa.df$PCo2 <- scores(PCOA)$sites[,2]
+  # Number of permutation
+  perm <- with(pcoa.df, how(nperm=999, blocks = TreeID)) 
+  # Perform permanova
+  adonis.results <- adonis2(mat ~ (practice/site)*time+(practice/site)*cultivar, #site is nested within practice
+                            data = data.frame(pcoa.df),
+                            permutations = perm, method="bray") 
+  # Extract permutation results in a data frame
+  adonis.df <- as.data.frame(adonis.results)
+  # Return wanted results
+  return(list(res1=eig, res2 = pcoa.df, res3 = dis.mx, res4 = adonis.df))
 }
 ```
 
@@ -130,25 +130,25 @@ return(list(res1=eig, res2 = pcoa.df, res3 = dis.mx, res4 = adonis.df))
 Create the same function without the "time" variable in the permanova formula
 ```{r}
 func.notime <- function(sub){
-dds<-phyloseq_to_deseq2(sub,~practice) 
-gm_mean <- function(x, na.rm=TRUE){
-  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
-dds = estimateSizeFactors(dds, geoMeans = apply(counts(dds), 1, gm_mean))
-blind <- DESeq2::varianceStabilizingTransformation(dds, blind=T)
-mat <- SummarizedExperiment::assay(blind) 
-mat<-t(mat)
-mat[which(mat<0)]<-0  
-dis.mx <- vegan::vegdist(mat, method = "bray")
-PCOA <- capscale(dis.mx~1, distance = "bray")
-eig <- round(PCOA$CA$eig[1:3]/sum(PCOA$CA$eig), 2) 
-pcoa.df <- data.frame(sample_data(sub))
-pcoa.df$PCo1 <- scores(PCOA)$sites[,1]
-pcoa.df$PCo2 <- scores(PCOA)$sites[,2]
-adonis.results <- adonis2(mat ~ (practice/site)*cultivar, 
-        data = data.frame(pcoa.df),
-        permutations = 999, method="bray") 
-adonis.df <- as.data.frame(adonis.results)
-return(list(res1=eig, res2 = pcoa.df, res3 = dis.mx, res4 = adonis.df))
+  dds<-phyloseq_to_deseq2(sub,~practice) 
+  gm_mean <- function(x, na.rm=TRUE){
+    exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))}
+  dds = estimateSizeFactors(dds, geoMeans = apply(counts(dds), 1, gm_mean))
+  blind <- DESeq2::varianceStabilizingTransformation(dds, blind=T)
+  mat <- SummarizedExperiment::assay(blind) 
+  mat<-t(mat)
+  mat[which(mat<0)]<-0  
+  dis.mx <- vegan::vegdist(mat, method = "bray")
+  PCOA <- capscale(dis.mx~1, distance = "bray")
+  eig <- round(PCOA$CA$eig[1:3]/sum(PCOA$CA$eig), 2) 
+  pcoa.df <- data.frame(sample_data(sub))
+  pcoa.df$PCo1 <- scores(PCOA)$sites[,1]
+  pcoa.df$PCo2 <- scores(PCOA)$sites[,2]
+  adonis.results <- adonis2(mat ~ (practice/site)*cultivar, 
+                            data = data.frame(pcoa.df),
+                            permutations = 999, method="bray") 
+  adonis.df <- as.data.frame(adonis.results)
+  return(list(res1=eig, res2 = pcoa.df, res3 = dis.mx, res4 = adonis.df))
 }
 ```
 
@@ -206,27 +206,27 @@ length(which(pcoa.df.9$practice=="Organic"))
 length(which(pcoa.df.9$practice=="Conventional"))
 
 (plot9 <- pcoa.df.9 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = code, fill = practice, size = code)) +
-  geom_point(size = 2.5) +
-  theme_bw()+
-  stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice))+
-  labs(x = paste("PCo1:", 100*eig9[1], "%"),
-       y = paste("PCo2:", 100*eig9[2], "%"))+
-  scale_color_manual(values= c("black","black"))+
-  scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
-  scale_size_manual(values=c(3,3,3,3))+ 
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  theme(legend.position = c(1, 1),
-        legend.justification = c(1, 1),
-        legend.direction = "horizontal",
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"),
-        axis.title = element_text(size = 16))+
-  guides(shape = guide_legend(override.aes = list(size=3)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=3)))+
-  guides(size = "none")+
-  guides(color = "none"))
+    ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = code, fill = practice, size = code)) +
+    geom_point(size = 2.5) +
+    theme_bw()+
+    stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice))+
+    labs(x = paste("PCo1:", 100*eig9[1], "%"),
+         y = paste("PCo2:", 100*eig9[2], "%"))+
+    scale_color_manual(values= c("black","black"))+
+    scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
+    scale_size_manual(values=c(3,3,3,3))+ 
+    scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+    theme(legend.position = c(1, 1),
+          legend.justification = c(1, 1),
+          legend.direction = "horizontal",
+          legend.background = element_rect(fill="white",
+                                           size=0.5, linetype="solid", 
+                                           colour ="black"),
+          axis.title = element_text(size = 16))+
+    guides(shape = guide_legend(override.aes = list(size=3)))+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=3)))+
+    guides(size = "none")+
+    guides(color = "none"))
 ```
 
 ## Figure 2C (Abundance)
@@ -283,26 +283,26 @@ b <- ps.melt_agg %>%
            position = 'fill')+
   facet_grid(~practice)+
   scale_fill_manual(values=c(
-"#A6A6A9",
-"#244154",
-"#4E79A7",
-"#A0CBE8",
-"#F28E2B",
-"#FC8D59",
-"#FFBE7D",
-"#B6992D",
-"#F1CE63",
-"#499894",
-"#86BCB6",
-"#E31A1C",
-"#E15759",
-"#FF9D9A",
-"#CAB2D6",
-"#79706E",
-"#A1D99B",
-"#41AB5D",
-"#006D2C",
-"#00441B"))+
+    "#A6A6A9",
+    "#244154",
+    "#4E79A7",
+    "#A0CBE8",
+    "#F28E2B",
+    "#FC8D59",
+    "#FFBE7D",
+    "#B6992D",
+    "#F1CE63",
+    "#499894",
+    "#86BCB6",
+    "#E31A1C",
+    "#E15759",
+    "#FF9D9A",
+    "#CAB2D6",
+    "#79706E",
+    "#A1D99B",
+    "#41AB5D",
+    "#006D2C",
+    "#00441B"))+
   theme_bw()+
   ylim(0,1)+
   ylab("Relative abundance")+
@@ -317,12 +317,12 @@ b <- ps.melt_agg %>%
   theme(legend.title = element_text(size = 12))+
   theme(legend.text = element_text(size = 10))+
   labs(fill = "Genus");b
-  
+
 # mean abundance by taxa, by some metadata:
 abun.summary <- ps.melt_agg %>% 
   group_by(aggTaxo, practice) %>% 
   summarise(mean = mean(Abundance))%>%
- pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
+  pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
 
 sum(abun.summary$mean_Conventional)
 sum(abun.summary$mean_Organic)
@@ -345,7 +345,7 @@ meta.flower %>%
   shapiro_test(alphadiv) # Not normal
 
 wilcox.test(alphadiv ~ practice, data = meta.flower,
-                   exact = FALSE)
+            exact = FALSE)
 
 meta.flower %>%
   kruskal_test (alphadiv ~ practice) # SOME GROUPS ARE DIFFERENT
@@ -400,40 +400,40 @@ Plot numbers correspond to the subset numbers
 
 # Pipe from pcoa dataframe
 (plot1B <- pcoa.df.1 %>% 
-  # Call ggplot for the following aesthetics
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = time, fill = practice, size = time)) +
-  # Plot point
-  geom_point(size = 2.5) +
-  # Set the theme
-  theme_bw()+
-  # Add 95% confidence interval ellipses
-  stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice), color = "black")+
-  # Change x and y labs to the appropriate eigen values
+   # Call ggplot for the following aesthetics
+   ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = time, fill = practice, size = time)) +
+   # Plot point
+   geom_point(size = 2.5) +
+   # Set the theme
+   theme_bw()+
+   # Add 95% confidence interval ellipses
+   stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice), color = "black")+
+   # Change x and y labs to the appropriate eigen values
    labs(x = paste("PCo1:", 100*eig1[1], "%"),
-       y = paste("PCo2:", 100*eig1[2], "%"))+
-  # Set the points contour color to black
-  scale_color_manual(values= c("black","black","black","black","black","black"))+
-  # Set the pints shape
-  scale_shape_manual(name = "Time", values = c(21,22,24))+
-  # Set the points size
-  scale_size_manual(values=c(3,3,3))+ 
-  # Set point filling color
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  # Adjust legend parameters
-  theme(legend.position = c(1,1),
-        legend.justification = c(1,1),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"),
-        axis.title = element_text(size = 16))+
-  # Change shape legend
-  guides(shape = guide_legend(override.aes = list(size=5)))+
-  # Change fill legend
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  # Remove size legend
-  guides(size = "none")+
-  # Remove contour color legend
-  guides(color = "none"))
+        y = paste("PCo2:", 100*eig1[2], "%"))+
+   # Set the points contour color to black
+   scale_color_manual(values= c("black","black","black","black","black","black"))+
+   # Set the pints shape
+   scale_shape_manual(name = "Time", values = c(21,22,24))+
+   # Set the points size
+   scale_size_manual(values=c(3,3,3))+ 
+   # Set point filling color
+   scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+   # Adjust legend parameters
+   theme(legend.position = c(1,1),
+         legend.justification = c(1,1),
+         legend.background = element_rect(fill="white",
+                                          size=0.5, linetype="solid", 
+                                          colour ="black"),
+         axis.title = element_text(size = 16))+
+   # Change shape legend
+   guides(shape = guide_legend(override.aes = list(size=5)))+
+   # Change fill legend
+   guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+   # Remove size legend
+   guides(size = "none")+
+   # Remove contour color legend
+   guides(color = "none"))
 
 # Color by site
 
@@ -463,65 +463,65 @@ Plot numbers correspond to the subset numbers
 ## Plots 6-7-8 (May-July-August)
 ```{r}
 (plot6 <-pcoa.df.6 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
-  geom_point(size = 2.5) +
-  scale_shape_manual(name = "Practices", values = c(21,21), aes(size = c(3, 0.1)))+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  labs(x = paste("PCo1:", 100*eig6[1], "%"),
-       y = paste("PCo2:", 100*eig6[2], "%")) +
-  theme_bw()+
+   ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
+   geom_point(size = 2.5) +
+   scale_shape_manual(name = "Practices", values = c(21,21), aes(size = c(3, 0.1)))+
+   scale_color_manual(values = c("black", "black"))+
+   scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+   labs(x = paste("PCo1:", 100*eig6[1], "%"),
+        y = paste("PCo2:", 100*eig6[2], "%")) +
+   theme_bw()+
    ylim(-2,1.5)+
-  xlim(-1.1,1.25)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = guide_legend(override.aes = list(size=5)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+   xlim(-1.1,1.25)+
+   theme(plot.title = element_text(size = 16, hjust = 0.5),
+         axis.title = element_text(size = 16),
+         legend.position = "none",
+         axis.title.x = element_blank())+
+   guides(shape = guide_legend(override.aes = list(size=5)))+
+   guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+   guides(size = "none")+
+   guides(color = "none"))
 
 
 (plot7 <-pcoa.df.7 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
-  geom_point(size=2.5) +
-  scale_shape_manual(name = "Practices", values = c(22,22))+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  labs(x = paste("PCo1:", 100*eig7[1], "%"),
-       y = paste("PCo2:", 100*eig7[2], "%")) +
-  theme_bw()+
-   ylim(-1.1,1.75)+
-  xlim(-1,1.1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = guide_legend(override.aes = list(size=5)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+    ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
+    geom_point(size=2.5) +
+    scale_shape_manual(name = "Practices", values = c(22,22))+
+    scale_color_manual(values = c("black", "black"))+
+    scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+    labs(x = paste("PCo1:", 100*eig7[1], "%"),
+         y = paste("PCo2:", 100*eig7[2], "%")) +
+    theme_bw()+
+    ylim(-1.1,1.75)+
+    xlim(-1,1.1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none",
+          axis.title.x = element_blank())+
+    guides(shape = guide_legend(override.aes = list(size=5)))+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 (plot8 <-pcoa.df.8 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
-  geom_point(size=2.5) +
-  scale_shape_manual(name = "Practices", values = c(24,24))+
-  scale_color_manual(values = c("black", "black"))+
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  labs(x = paste("PCo1:", 100*eig8[1], "%"),
-       y = paste("PCo2:", 100*eig8[2], "%")) +
-  theme_bw()+
-   ylim(-1.5,1.5)+
-  xlim(-1.25,1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = guide_legend(override.aes = list(size=5)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+    ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
+    geom_point(size=2.5) +
+    scale_shape_manual(name = "Practices", values = c(24,24))+
+    scale_color_manual(values = c("black", "black"))+
+    scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+    labs(x = paste("PCo1:", 100*eig8[1], "%"),
+         y = paste("PCo2:", 100*eig8[2], "%")) +
+    theme_bw()+
+    ylim(-1.5,1.5)+
+    xlim(-1.25,1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none",
+          axis.title.x = element_blank())+
+    guides(shape = guide_legend(override.aes = list(size=5)))+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 plot6+plot7+plot8+
   plot_layout(guides = "collect")
@@ -533,53 +533,53 @@ We want to make the plot for each sampling month but we want to highlight only t
 # Create a column that tell which site to highlight
 # Highlight = D1 and D2
 pcoa.df.6 <- pcoa.df.6 %>%
-    mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
+  mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
 # Highlight2 = B1 and B2
 pcoa.df.6 <- pcoa.df.6 %>%
-    mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
+  mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
 
 # Plot highlight D1 and D2
 (plot6B <- ggplot(data = pcoa.df.6, 
-          aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(21,21,21))+
     # D1 and D2 will have color and the "other" will be gray
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig6[1], "%"),
-       y = paste("PCo2:", 100*eig6[2], "%")) +
-     ylim(-2,1.5)+
-  xlim(-1.1,1.25)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none")+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig6[2], "%")) +
+    ylim(-2,1.5)+
+    xlim(-1.1,1.25)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none")+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 # Plot highlight B1 and B2
 (plot6C <- ggplot(data = pcoa.df.6, 
-          aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(21,21,21))+
-   # D1 and D2 will have color and the "other" will be gray
+    # D1 and D2 will have color and the "other" will be gray
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig6[1], "%"),
-       y = paste("PCo2:", 100*eig6[2], "%")) +
-   ylim(-2,1.5)+
-  xlim(-1.1,1.25)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig6[2], "%")) +
+    ylim(-2,1.5)+
+    xlim(-1.1,1.25)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none",
+          axis.title.x = element_blank())+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 plot6 / plot6B / plot6C
 ```
@@ -588,51 +588,51 @@ plot6 / plot6B / plot6C
 ```{r}
 # Highlight = D1 and D2
 pcoa.df.7 <- pcoa.df.7 %>%
-    mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
+  mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
 # Highlight2 = B1 and B2
 pcoa.df.7 <- pcoa.df.7 %>%
-    mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
+  mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
 
 # D1 and D2
 (plot7B <- ggplot(data = pcoa.df.7, 
-          aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(22,22,22))+
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig7[1], "%"),
-       y = paste("PCo2:", 100*eig7[2], "%")) +
-  ylim(-1.1,1.75)+
-  xlim(-1,1.1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none")+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig7[2], "%")) +
+    ylim(-1.1,1.75)+
+    xlim(-1,1.1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none")+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 # B1 and B2
 (plot7C <- ggplot(data = pcoa.df.7, 
-          aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(22,22,22))+
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig7[1], "%"),
-       y = paste("PCo2:", 100*eig7[2], "%")) +
- ylim(-1.1,1.75)+
-  xlim(-1,1.1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig7[2], "%")) +
+    ylim(-1.1,1.75)+
+    xlim(-1,1.1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none",
+          axis.title.x = element_blank())+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 plot7 / plot7B / plot7C
 ```
@@ -641,51 +641,51 @@ plot7 / plot7B / plot7C
 ```{r}
 # Highlight = D1 and D2
 pcoa.df.8 <- pcoa.df.8 %>%
-    mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
+  mutate(highlight = ifelse(code %in% c("D1", "D2"), code, "Other"))
 # Highlight2 = B1 and B2
 pcoa.df.8 <- pcoa.df.8 %>%
-    mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
+  mutate(highlight2 = ifelse(code %in% c("B1", "B2"), code, "Other"))
 
 # D1 and D2
 (plot8B <- ggplot(data = pcoa.df.8, 
-          aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight, fill = highlight, shape = highlight))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(24,24,24))+
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig8[1], "%"),
-       y = paste("PCo2:", 100*eig8[2], "%")) +
-  ylim(-1.5,1.5)+
-  xlim(-1.25,1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none")+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig8[2], "%")) +
+    ylim(-1.5,1.5)+
+    xlim(-1.25,1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none")+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 # B1 and B2
 (plot8C <- ggplot(data = pcoa.df.8, 
-          aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
-  geom_point(size=2.5)+
-  theme_bw()+
+                  aes(x = PCo1, y = PCo2, color = highlight2, fill = highlight2, shape = highlight2))+
+    geom_point(size=2.5)+
+    theme_bw()+
     scale_color_manual(values = c("black","black","#E1E1E0"))+
     scale_shape_manual(values = c(24,24,24))+
     scale_fill_manual(name = "Sites", values = c("#F28E2B", "#499894", "#E1E1E0"))+
     labs(x = paste("PCo1:", 100*eig8[1], "%"),
-       y = paste("PCo2:", 100*eig8[2], "%")) +
-  ylim(-1.5,1.5)+
-  xlim(-1.25,1)+
-  theme(plot.title = element_text(size = 16, hjust = 0.5),
-        axis.title = element_text(size = 16),
-        legend.position = "none",
-        axis.title.x = element_blank())+
-  guides(shape = "none")+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+         y = paste("PCo2:", 100*eig8[2], "%")) +
+    ylim(-1.5,1.5)+
+    xlim(-1.25,1)+
+    theme(plot.title = element_text(size = 16, hjust = 0.5),
+          axis.title = element_text(size = 16),
+          legend.position = "none",
+          axis.title.x = element_blank())+
+    guides(shape = "none")+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 
 plot7 / plot7B / plot7C
 ```
@@ -693,8 +693,8 @@ plot7 / plot7B / plot7C
 ## Patchwork
 ```{r}
 (plot1B|((plot6 + plot7 + plot8))/
-  (plot6C + plot7C +plot8C)/   #B1vsB2
-  (plot6B + plot7B +plot8B))+  #D1vsD2
+   (plot6C + plot7C +plot8C)/   #B1vsB2
+   (plot6B + plot7B +plot8B))+  #D1vsD2
   plot_annotation(tag_levels = 'A')&
   theme(plot.tag = element_text(face = 'bold'))
 ```
@@ -757,7 +757,7 @@ ps.melt_agg <- left_join(ps.melt, taxonomie_agregee,
   mutate(aggTaxo = factor(aggTaxo, levels = taxLvl))%>% # reorder factor levels
   group_by(aggTaxo, practice, time, Sample) %>% # sum all Others into one by sample
   summarise(Abundance = sum(Abundance)) 
- 
+
 
 # simple stacked barplot :
 c <- ps.melt_agg %>% 
@@ -766,26 +766,26 @@ c <- ps.melt_agg %>%
            position = 'fill')+
   facet_nested(~practice+time)+
   scale_fill_manual(values=c(
-"#A6A6A9",
-"#499894",
-"black",
-"#A0CBE8",
-"darkblue",
-"darkorange3",
-"#E15759",
-"#497894",
-"#79706E",
-"#CAB2D6",
-"#00441B",
-"#86BCB6",
-"#F28E2B",
-"#244154",
-"yellow3",
-"#41AB5D",
-"#FF9D9A",
-"#A1D99B",
-"purple4",
-"#006D2C"))+
+    "#A6A6A9",
+    "#499894",
+    "black",
+    "#A0CBE8",
+    "darkblue",
+    "darkorange3",
+    "#E15759",
+    "#497894",
+    "#79706E",
+    "#CAB2D6",
+    "#00441B",
+    "#86BCB6",
+    "#F28E2B",
+    "#244154",
+    "yellow3",
+    "#41AB5D",
+    "#FF9D9A",
+    "#A1D99B",
+    "purple4",
+    "#006D2C"))+
   theme_bw()+
   ylim(0,1)+
   ylab("Relative abundance")+
@@ -800,12 +800,12 @@ c <- ps.melt_agg %>%
   theme(legend.title = element_text(size = 16))+
   theme(legend.text = element_text(size = 10))+
   labs(fill = "Genus");c
-  
+
 # mean abundance by taxa, by some metadata:
 abun.summary <- ps.melt_agg %>% 
   group_by(aggTaxo, practice, time) %>% 
   summarise(mean = mean(Abundance))%>%
- pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
+  pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
 
 
 #others <- ps.melt_agg[which(ps.melt_agg$aggTaxo == "Others"),]
@@ -902,8 +902,8 @@ plot.diversity2 <- ggplot(meta.leaf, aes(time, alphadiv))+ # What we want to plo
   guides(alpha = "none")+ # Remove size legendhttp://127.0.0.1:12599/graphics/plot_zoom_png?width=795&height=879
   theme(legend.position=c(0.999,0.99), legend.justification = c(1,1),
         legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))+ 
+                                         size=0.5, linetype="solid", 
+                                         colour ="black"))+ 
   theme(plot.title = element_text(size =16))+# Plot title
   theme(axis.title.x = element_blank())+ # Hide axis title
   ylab("Shannon Index")+ # Y axis labels
@@ -1004,27 +1004,27 @@ length(which(pcoa.df.10$practice=="Organic"))
 length(which(pcoa.df.10$practice=="Conventional"))
 
 (plot10 <- pcoa.df.10 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = code, fill = practice, size = code)) +
-  geom_point(size = 2.5) +
-  theme_bw()+
-  stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice))+
-  labs(x = paste("PCo1:", 100*eig10[1], "%"),
-       y = paste("PCo2:", 100*eig10[2], "%"))+
-  scale_color_manual(values= c("black","black"))+
-  scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
-  scale_size_manual(values=c(3,3,3,3))+ 
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  theme(legend.position = c(1,1),
-        legend.justification = c(1,1),
-        legend.direction = "horizontal",
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"),
-        axis.title = element_text(size = 16))+
-  guides(shape = guide_legend(override.aes = list(size=3)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=3)))+
-  guides(size = "none")+
-  guides(color = "none"))
+    ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = code, fill = practice, size = code)) +
+    geom_point(size = 2.5) +
+    theme_bw()+
+    stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice))+
+    labs(x = paste("PCo1:", 100*eig10[1], "%"),
+         y = paste("PCo2:", 100*eig10[2], "%"))+
+    scale_color_manual(values= c("black","black"))+
+    scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
+    scale_size_manual(values=c(3,3,3,3))+ 
+    scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+    theme(legend.position = c(1,1),
+          legend.justification = c(1,1),
+          legend.direction = "horizontal",
+          legend.background = element_rect(fill="white",
+                                           size=0.5, linetype="solid", 
+                                           colour ="black"),
+          axis.title = element_text(size = 16))+
+    guides(shape = guide_legend(override.aes = list(size=3)))+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=3)))+
+    guides(size = "none")+
+    guides(color = "none"))
 ```
 
 ## (Abundance)
@@ -1081,26 +1081,26 @@ barplot10 <- ps.melt_agg %>%
            position = 'fill')+
   facet_grid(~practice)+
   scale_fill_manual(values=c(
-"#A6A6A9",
-"#FC8D59",
-"cyan",
-"yellow",
-"purple",
-"red4",
-"#FC8D59",
-"#FFBE7D",
-"#86BCB6",
-"#499894",
-"#FF9D9A",
-"#B6992D",
-"#41AB5D",
-"#E31A1C",
-"#E15759",
-"#79706E",
-"#CAB2D6",
-"#A1D99B",
-"#006D2C",
-"#00441B"))+
+    "#A6A6A9",
+    "#FC8D59",
+    "cyan",
+    "yellow",
+    "purple",
+    "red4",
+    "#FC8D59",
+    "#FFBE7D",
+    "#86BCB6",
+    "#499894",
+    "#FF9D9A",
+    "#B6992D",
+    "#41AB5D",
+    "#E31A1C",
+    "#E15759",
+    "#79706E",
+    "#CAB2D6",
+    "#A1D99B",
+    "#006D2C",
+    "#00441B"))+
   theme_bw()+
   ylim(0,1)+
   ylab("Relative abundance")+
@@ -1115,7 +1115,7 @@ barplot10 <- ps.melt_agg %>%
   theme(legend.title = element_text(size = 12))+
   theme(legend.text = element_text(size = 10))+
   labs(fill = "Genus");barplot10
-  
+
 # mean abundance by taxa, by some metadata:
 #abun.summary <- ps.melt_agg %>% 
 #  group_by(aggTaxo, practice) %>% 
@@ -1139,7 +1139,7 @@ meta.flower.supp %>%
   shapiro_test(alphadiv) # Not normal
 
 wilcox.test(alphadiv ~ practice, data = meta.flower,
-                   exact = FALSE)
+            exact = FALSE)
 
 meta.flower.supp %>%
   kruskal_test (alphadiv ~ practice) # SOME GROUPS ARE DIFFERENT
@@ -1196,25 +1196,25 @@ length(which(pcoa.df.2$practice=="Organic" & pcoa.df.2$time == "August"))
 
 
 (plot2 <- pcoa.df.2 %>% 
-  ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = time, fill = practice, size = time)) +
-  geom_point(size = 2.5) +
-  theme_bw()+
-  stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice), color = "black")+
-  labs(x = paste("PCo1:", 100*eig2[1], "%"),
-       y = paste("PCo2:", 100*eig2[2], "%"))+
-  scale_color_manual(values= c("black","black","black","black","black","black"))+
-  scale_shape_manual(name = "Time", values = c(21,22,24))+
-  scale_size_manual(values=c(3,3,3))+ 
-  scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
-  theme(legend.position = c(1,1),
-        legend.justification = c(1,1),
-        legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))+
-  guides(shape = guide_legend(override.aes = list(size=5)))+
-  guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
-  guides(size = "none")+
-  guides(color = "none"))
+    ggplot(aes(x = PCo1, y = PCo2, colour = practice, shape = time, fill = practice, size = time)) +
+    geom_point(size = 2.5) +
+    theme_bw()+
+    stat_ellipse(level=0.95, geom = "polygon",alpha = 1/6, aes(group = practice), color = "black")+
+    labs(x = paste("PCo1:", 100*eig2[1], "%"),
+         y = paste("PCo2:", 100*eig2[2], "%"))+
+    scale_color_manual(values= c("black","black","black","black","black","black"))+
+    scale_shape_manual(name = "Time", values = c(21,22,24))+
+    scale_size_manual(values=c(3,3,3))+ 
+    scale_fill_manual(name = "Practices", values = c("#F28E2B", "#499894"))+
+    theme(legend.position = c(1,1),
+          legend.justification = c(1,1),
+          legend.background = element_rect(fill="white",
+                                           size=0.5, linetype="solid", 
+                                           colour ="black"))+
+    guides(shape = guide_legend(override.aes = list(size=5)))+
+    guides(fill = guide_legend(override.aes = list(shape = 22, size=5)))+
+    guides(size = "none")+
+    guides(color = "none"))
 ```
 
 # Figure S3
@@ -1263,7 +1263,7 @@ ps.melt_agg <- left_join(ps.melt, taxonomie_agregee,
   mutate(aggTaxo = factor(aggTaxo, levels = taxLvl))%>% # reorder factor levels
   group_by(aggTaxo, practice, time, Sample) %>% # sum all Others into one by sample
   summarise(Abundance = sum(Abundance)) 
- 
+
 
 # simple stacked barplot :
 c <- ps.melt_agg %>% 
@@ -1272,25 +1272,25 @@ c <- ps.melt_agg %>%
            position = 'fill')+
   facet_nested(~practice+time)+
   scale_fill_manual(values=c("#A6A6A9",
-"purple",
-"#497894",
-"darkorange3",
-"darkblue",
-"#499894",
-"#E15759",
-"#79706E",
-"#A0CBE8",
-"#CAB2D6" ,
-"#00441B",
-"#F28E2B",
-"#86BCB6",
-"#244154",
-"yellow3",
-"#FF9D9A",
-"#41AB5D",
-"#A1D99B",
-"purple4",
-"#006D2C"))+
+                             "purple",
+                             "#497894",
+                             "darkorange3",
+                             "darkblue",
+                             "#499894",
+                             "#E15759",
+                             "#79706E",
+                             "#A0CBE8",
+                             "#CAB2D6" ,
+                             "#00441B",
+                             "#F28E2B",
+                             "#86BCB6",
+                             "#244154",
+                             "yellow3",
+                             "#FF9D9A",
+                             "#41AB5D",
+                             "#A1D99B",
+                             "purple4",
+                             "#006D2C"))+
   theme_bw()+
   ylim(0,1)+
   ylab("Relative abundance")+
@@ -1305,12 +1305,12 @@ c <- ps.melt_agg %>%
   theme(legend.title = element_text(size = 16))+
   theme(legend.text = element_text(size = 10))+
   labs(fill = "Genus");c
-  
+
 # mean abundance by taxa, by some metadata:
 abun.summary <- ps.melt_agg %>% 
   group_by(aggTaxo, practice, time) %>% 
   summarise(mean = mean(Abundance))%>%
- pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
+  pivot_wider(names_from = practice, values_from = mean, names_prefix = "mean_");abun.summary
 
 
 #others <- ps.melt_agg[which(ps.melt_agg$aggTaxo == "Others"),]
@@ -1410,8 +1410,8 @@ plot.diversity5 <- ggplot(meta.leaf2, aes(time, alphadiv))+ # What we want to pl
   guides(alpha = "none")+ # Remove size legendhttp://127.0.0.1:12599/graphics/plot_zoom_png?width=795&height=879
   theme(legend.position=c(0.999,0.99), legend.justification = c(1,1),
         legend.background = element_rect(fill="white",
-                                  size=0.5, linetype="solid", 
-                                  colour ="black"))+ 
+                                         size=0.5, linetype="solid", 
+                                         colour ="black"))+ 
   theme(plot.title = element_text(size =16))+# Plot title
   theme(axis.title.x = element_blank())+ # Hide axis title
   ylab("Shannon Index")+ # Y axis labels
@@ -1568,77 +1568,56 @@ sub_metadata$score2vst<-scores(vst.blind.Mat.mds)[,2]
 
 test <- ggplot(data=sub_metadata, aes(score1vst, score2vst))
 test+geom_point(data=transform(sub_metadata, Type = NULL),colour = "grey85")+
-  geom_point()+xlab("NMDS1")+ylab("NMDS2")+
-  stat_ellipse(level=0.95, geom = "polygon", alpha = 1/6, aes(color=Type, fill = Type, linetype=Area))+
-  facet_wrap(~Type) + 
-  theme_bw() + theme(legend.title = element_text(colour="black", size=18, face="bold"),
-                     legend.text = element_text(colour="black", size = 18),
-                     axis.title=element_text(face="bold",size="18", color="black"),
-                     legend.position="right",
-                     plot.title=element_text(face="bold",size=18)) +
-  geom_point(data=sub_metadata,aes(color=Type, fill=Type, shape=Area))+
-  scale_color_manual(name="Community",
-                     values=c("black","black","black","black"))+
-  scale_fill_manual(name="Community",
-                    values=c("#1b7837","#d73027","#80cdc1","#fdae61"))+
-  scale_shape_manual(values=c(21,1))+
-  scale_linetype_manual(values=c(2,1))+
-  guides(fill=FALSE,color=FALSE,shape=FALSE,linetype=FALSE)
+geom_point()+xlab("NMDS1")+ylab("NMDS2")+
+stat_ellipse(level=0.95, geom = "polygon", alpha = 1/6, aes(color=Type, fill = Type, linetype=Area))+
+facet_wrap(~Type) + 
+theme_bw() + theme(legend.title = element_text(colour="black", size=18, face="bold"),
+legend.text = element_text(colour="black", size = 18),
+axis.title=element_text(face="bold",size="18", color="black"),
+legend.position="right",
+plot.title=element_text(face="bold",size=18)) +
+geom_point(data=sub_metadata,aes(color=Type, fill=Type, shape=Area))+
+scale_color_manual(name="Community",
+values=c("black","black","black","black"))+
+scale_fill_manual(name="Community",
+values=c("#1b7837","#d73027","#80cdc1","#fdae61"))+
+scale_shape_manual(values=c(21,1))+
+scale_linetype_manual(values=c(2,1))+
+guides(fill=FALSE,color=FALSE,shape=FALSE,linetype=FALSE)
 
 
-
-```{r}
-"grey",
-"#D5AEE6",
-"#DE73F4",
-"#CD4A9B",
-"#9C207B",
-"#F78484",
-"#E35959",
-"#BB4D3C",
-"#F5C898",
-"#F9B36D",
-"#E09B57",
-"#F6F199",
-"#E6CF59",
-"#C1D03A",
-"#64D23C",
-"#37A346",
-"#246B30",
-"#43BCCF",
-"#3B839E",
-"#244154"
-```
 
 # COLORS
 ```{r}
-Others              "#A6A6A9"
-Genolevuria         "#244154"
-Dothidotthia        "#4E79A7" 
-Filobasidium        "#497894"
-Naganishia          "darkblue"
-Podosphaera         "black"
-Dothidotthiaceae*   "#A0CBE8"
-Taphrina            "#F28E2B"
-Paraphoma           "darkorange3"
-Neocucurbitaria     "#FC8D59"
-Mycosphaerella      "#FFBE7D"
-Venturia            "#B6992D"
-Starmerella         "#F1CE63"
-Vishniacozyma       "yellow3"
-Blumeria            "#499894"
-Paraconiothyrium    "#86BCB6"
-Sclerotinia         "#E31A1C"
-                    "red4" 
-Gyoerffyella        "#E15759"
-Alternaria          "#FF9D9A"
-Epicoccum           "#CAB2D6" 
-"purple" 
-"purple4"
-Fomes               "#79706E"
-Cladosporium        "#A1D99B"
-Didymella           "#41AB5D"
-Aureobasidium       "#006D2C"
-Ramularia           "#00441B"
+my_vector <- c(
+  Others = "#A6A6A9",
+  Genolevuria = "#244154",
+  Dothidotthia = "#4E79A7",
+  Filobasidium = "#497894",
+  Naganishia = "darkblue",
+  Podosphaera = "black",
+  Dothidotthiaceae = "#A0CBE8",
+  Taphrina = "#F28E2B",
+  Paraphoma = "darkorange3",
+  Neocucurbitaria = "#FC8D59",
+  Mycosphaerella = "#FFBE7D",
+  Venturia = "#B6992D",
+  Starmerella = "#F1CE63",
+  Vishniacozyma = "yellow3",
+  Blumeria = "#499894",
+  Paraconiothyrium = "#86BCB6",
+  Sclerotinia = "#E31A1C",
+  unnamed1 = "red4",
+  Gyoerffyella = "#E15759",
+  Alternaria = "#FF9D9A",
+  Epicoccum = "#CAB2D6",
+  unnamed2 = "purple",
+  unnamed3 = "purple4",
+  Fomes = "#79706E",
+  Cladosporium = "#A1D99B",
+  Didymella = "#41AB5D",
+  Aureobasidium = "#006D2C",
+  Ramularia = "#00441B"
+)
 ```
 
