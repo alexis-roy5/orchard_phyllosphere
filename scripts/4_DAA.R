@@ -1,5 +1,6 @@
 library(pacman)
-p_load(phyloseq, tidyverse, ANCOMBC, RColorBrewer, patchwork, magrittr, 
+p_load(phyloseq, tidyverse, ANCOMBC, RColorBrewer, kableExtra,
+       patchwork, magrittr, 
        update = FALSE)
 
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/tax_glom2.R')
@@ -19,8 +20,8 @@ ps.leaf <- subset_samples(
   ps, type == 'Leaf'
 ) %>% tax_glom2(taxrank = taxLvl)
 
-# # ANCOM model
-# Execute this once then save it below
+# ANCOM model
+#Execute this once then save it below
 # ancom_flower.out <- ancombc2(
 #   data = ps.flower,
 #   prv_cut = 0.10,
@@ -33,19 +34,19 @@ ps.leaf <- subset_samples(
 #   verbose = TRUE,
 #   n_cl = 8 # cores for parallel computing
 # )
-# 
-# ancom_leaf.out <- ancombc2(
-#   data = ps.leaf,
-#   prv_cut = 0.10,
-#   fix_formula="practice + cultivar",
-#   #  rand_formula = "(1 | TreeID)",
-#   group = "practice", # specify group if >=3 groups exist, allows structural zero detection
-#   struc_zero = TRUE,
-#   alpha = 0.01,
-#   pairwise = TRUE,
-#   verbose = TRUE,
-#   n_cl = 8 # cores for parallel computing
-# )
+
+ancom_leaf.out <- ancombc2(
+  data = ps.leaf,
+  prv_cut = 0.10,
+  fix_formula="practice + cultivar + time",
+  #rand_formula = "(1 | TreeID)",
+  group = "practice", # specify group if >=3 groups exist, allows structural zero detection
+  struc_zero = TRUE,
+  alpha = 0.01,
+  pairwise = TRUE,
+  verbose = TRUE,
+  n_cl = 8 # cores for parallel computing
+)
 
 # write_rds(ancom_leaf.out, '2023/data/ITS/DAA/ancom_Genus_leaf.rds')
 # write_rds(ancom_flower.out, '2023/data/ITS/DAA/ancom_Genus_flower.rds')
@@ -87,7 +88,7 @@ ancom_plot_data <- function(ancom_filtered, ps) {
                  names_to = c(".value", "Group"), 
                  names_pattern = "(lfc|se|q|passed_ss)_(.+)", 
                  values_drop_na = TRUE) %>% 
-    # lfc become 0 when q > threshold for plotting purposes
+    # Group factor to show enrichment
     mutate(
       Group = factor(
         case_when(lfc > 0 ~ 'Organic',
@@ -99,7 +100,7 @@ ancom_plot_data <- function(ancom_filtered, ps) {
                 select(all_of(taxLvl), Phylum, Class, Order) %>% tibble(),
               join_by(taxon == !!sym(taxLvl))) %>% 
     filter(lfc!=0) %>% 
-    mutate(taxon = str_replace_all(taxon, "_", " ")) # for *_gen_Incertae_sedis
+    mutate(taxon = str_replace_all(taxon, "_gen_Incertae_sedis", " ")) # for *_gen_Incertae_sedis
   
   # Arrange taxa by descendnig lfc for waterfall
   taxon_order <- plot_ancom.df %>% 
@@ -195,32 +196,34 @@ leaf_plot_data <- ancom_plot_data(leaf_filtered, ps.leaf)
 flower_plot_data <- ancom_plot_data(flower_filtered, ps.flower)
 
 # PLOTS : 
-
+lfc_cutoff <- 1
 leaf_plot_data %>% 
-  filter(lfc>=1 | lfc <= -1) %>% 
+  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
   plot_ancom(taxLvl_palette = 'Set3',
            tile_rank = 'Phylum')
 ggsave('2023/out/DAA_leaf_genus_phylum.pdf', 
        bg = 'white', width = 1600, height = 2000, 
        units = 'px', dpi = 220)
-theme(panel.grid = )
-plot_ancom(flower_plot_data, 
-           taxLvl_palette = 'Set3',
+
+flower_plot_data %>% 
+  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
+  plot_ancom(taxLvl_palette = 'Set3',
            tile_rank = 'Phylum')
 ggsave('2023/out/DAA_flower_genus_phylum.pdf', 
        bg = 'white', width = 1600, height = 2000, 
        units = 'px', dpi = 220)
 
 leaf_plot_data %>% 
-  filter(lfc>=1 | lfc <= -1) %>% 
+  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
   plot_ancom(taxLvl_palette = 'Set1',
            tile_rank = 'Class')
 ggsave('2023/out/DAA_leaf_genus_class.pdf', 
        bg = 'white', width = 1600, height = 2000, 
        units = 'px', dpi = 220)
 
-plot_ancom(flower_plot_data, 
-           taxLvl_palette = 'Set1',
+flower_plot_data %>% 
+  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
+  plot_ancom(taxLvl_palette = 'Set1',
            tile_rank = 'Class')
 ggsave('2023/out/DAA_flower_genus_class.pdf', 
        bg = 'white', width = 1600, height = 2000, 
