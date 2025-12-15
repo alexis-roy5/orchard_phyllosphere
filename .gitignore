@@ -1,6 +1,7 @@
 archive/
 tmp/
 bak/
+*.png
 *.bak
 doc/
 logs/
