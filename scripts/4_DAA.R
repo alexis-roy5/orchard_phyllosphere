@@ -34,19 +34,19 @@ ps.leaf <- subset_samples(
 #   verbose = TRUE,
 #   n_cl = 8 # cores for parallel computing
 # )
-
-ancom_leaf.out <- ancombc2(
-  data = ps.leaf,
-  prv_cut = 0.10,
-  fix_formula="practice + cultivar + time",
-  #rand_formula = "(1 | TreeID)",
-  group = "practice", # specify group if >=3 groups exist, allows structural zero detection
-  struc_zero = TRUE,
-  alpha = 0.01,
-  pairwise = TRUE,
-  verbose = TRUE,
-  n_cl = 8 # cores for parallel computing
-)
+# 
+# ancom_leaf.out <- ancombc2(
+#   data = ps.leaf,
+#   prv_cut = 0.10,
+#   fix_formula="practice + cultivar + time",
+#   #rand_formula = "(1 | TreeID)",
+#   group = "practice", # specify group if >=3 groups exist, allows structural zero detection
+#   struc_zero = TRUE,
+#   alpha = 0.01,
+#   pairwise = TRUE,
+#   verbose = TRUE,
+#   n_cl = 8 # cores for parallel computing
+# )
 
 # write_rds(ancom_leaf.out, '2023/data/ITS/DAA/ancom_Genus_leaf.rds')
 # write_rds(ancom_flower.out, '2023/data/ITS/DAA/ancom_Genus_flower.rds')
@@ -99,8 +99,7 @@ ancom_plot_data <- function(ancom_filtered, ps) {
                 tax_table() %>% data.frame() %>% 
                 select(all_of(taxLvl), Phylum, Class, Order) %>% tibble(),
               join_by(taxon == !!sym(taxLvl))) %>% 
-    filter(lfc!=0) %>% 
-    mutate(taxon = str_replace_all(taxon, "_gen_Incertae_sedis", " ")) # for *_gen_Incertae_sedis
+    filter(lfc!=0)
   
   # Arrange taxa by descendnig lfc for waterfall
   taxon_order <- plot_ancom.df %>% 
@@ -110,6 +109,17 @@ ancom_plot_data <- function(ancom_filtered, ps) {
   plot_ancom.df %<>%
     mutate(taxon = factor(taxon, levels = taxon_order))
 }
+
+# Quick fixer function
+format_taxon_label <- function(x) {
+  ifelse(
+    str_detect(x, "_gen_Incertae_sedis"),
+    sapply(str_replace(x, "(.*)_gen_Incertae_sedis", "\\1~gen.~I.~s."), 
+           function(y) parse(text = y)),
+    x
+  )
+}
+
 
 # Main plotting function
 plot_ancom <- function(plot_data, taxLvl_palette, tile_rank) {
@@ -127,9 +137,10 @@ plot_ancom <- function(plot_data, taxLvl_palette, tile_rank) {
   bg_colors <- c("0" = "grey90", "1" = "white")
   
   # If too many tested taxon levels for the palette, expand it
-  tile_rank_N <- length(unique(plot_data[[tile_rank]]))
-  max_colours <- RColorBrewer::brewer.pal.info[taxLvl_palette,'maxcolors']
-  taxLvl_palette <- colorRampPalette(brewer.pal(max_colours,taxLvl_palette))(tile_rank_N)
+  # tile_rank_N <- length(unique(plot_data[[tile_rank]]))
+  # max_colours <- RColorBrewer::brewer.pal.info[taxLvl_palette,'maxcolors']
+  # taxLvl_palette <- colorRampPalette(brewer.pal(max_colours,taxLvl_palette))(tile_rank_N)
+  fit_palette <- taxLvl_palette[unique(plot_data[[tile_rank]])]
 
   # Coloured tiles by higher taxonomic rank
   tiles <- plot_data %>% 
@@ -138,6 +149,7 @@ plot_ancom <- function(plot_data, taxLvl_palette, tile_rank) {
     theme(axis.text.x = element_blank(), 
           axis.title = element_blank(),
           axis.text.y = element_text(hjust = 1)) +
+    scale_y_discrete(labels = format_taxon_label) +
     scale_fill_manual(values = taxLvl_palette)
   
   # Main plot
@@ -166,7 +178,7 @@ plot_ancom <- function(plot_data, taxLvl_palette, tile_rank) {
           axis.title.y = element_blank(),
           panel.grid = element_blank())+
     guides(fill = guide_legend(override.aes = list(shape = 21))) +
-    labs(x = 'Log2 fold changes in absolute abundances relative to organic',
+    labs(x = 'LFD in absolute abundances (organic relative to conventional)',
          fill = 'Enriched in')
   
   # Patchwork
@@ -197,25 +209,12 @@ flower_plot_data <- ancom_plot_data(flower_filtered, ps.flower)
 
 # PLOTS : 
 lfc_cutoff <- 1
-leaf_plot_data %>% 
-  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
-  plot_ancom(taxLvl_palette = 'Set3',
-           tile_rank = 'Phylum')
-ggsave('2023/out/DAA_leaf_genus_phylum.pdf', 
-       bg = 'white', width = 1600, height = 2000, 
-       units = 'px', dpi = 220)
-
-flower_plot_data %>% 
-  filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
-  plot_ancom(taxLvl_palette = 'Set3',
-           tile_rank = 'Phylum')
-ggsave('2023/out/DAA_flower_genus_phylum.pdf', 
-       bg = 'white', width = 1600, height = 2000, 
-       units = 'px', dpi = 220)
 
 leaf_plot_data %>% 
   filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
-  plot_ancom(taxLvl_palette = 'Set1',
+  plot_ancom(taxLvl_palette = c("#E41A1C", "#705C83", "#4DAF4A", "#999999", "#7E6E85",
+                                "#BA5E6C", "#FF7F00", "#FFD421", "#a7c716", "#A65628",
+                                "#DB728C", "#FFE1DC", "#34c9b8"),
            tile_rank = 'Class')
 ggsave('2023/out/DAA_leaf_genus_class.pdf', 
        bg = 'white', width = 1600, height = 2000, 
@@ -223,7 +222,7 @@ ggsave('2023/out/DAA_leaf_genus_class.pdf',
 
 flower_plot_data %>% 
   filter(lfc >= lfc_cutoff | lfc <= -lfc_cutoff) %>% 
-  plot_ancom(taxLvl_palette = 'Set1',
+  plot_ancom(taxLvl_palette = brewer.pal(9,'Set1'),
            tile_rank = 'Class')
 ggsave('2023/out/DAA_flower_genus_class.pdf', 
        bg = 'white', width = 1600, height = 2000, 

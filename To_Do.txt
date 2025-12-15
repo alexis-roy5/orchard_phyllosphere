@@ -1,9 +1,0 @@
-Choses à faire pour Orchard Phyllosphere!
-
-Figures
-
-Méthodes
-	Bioinformatiques
-	DADA2, phyloseq
-	Statisitiques
-	Subset, décrire la conception des figures
