@@ -24,3 +24,4 @@ ILL_pipelines/
 *fastqc/
 .Rproj.user
 .Rapp.history
+*.html
