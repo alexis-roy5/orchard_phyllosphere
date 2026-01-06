@@ -3,6 +3,7 @@ p_load(phyloseq, tidyverse, ANCOMBC, RColorBrewer, kableExtra,
        patchwork, magrittr, 
        update = FALSE)
 
+devtools::load_all("~/Repos/mgx.tools/")
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/tax_glom2.R')
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/community_functions.R')
 
@@ -12,11 +13,11 @@ source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/
 ps <- read_rds('2023/out/ps_ITS.rds')
 taxLvl <- 'Genus'
 
-ps.flower <- subset_samples(
+ps.flower <- phyloseq::subset_samples(
   ps, type == 'Flower'
-)  %>% tax_glom2(taxrank = taxLvl) # tax_glom2 will remove taxa absent from all samples
+) %>% tax_glom2(taxrank = taxLvl) # tax_glom2 will remove taxa absent from all samples
 
-ps.leaf <- subset_samples(
+ps.leaf <- phyloseq::subset_samples(
   ps, type == 'Leaf'
 ) %>% tax_glom2(taxrank = taxLvl)
 
