@@ -3,7 +3,7 @@ p_load(phyloseq, tidyverse, ANCOMBC, RColorBrewer, kableExtra,
        patchwork, magrittr, 
        update = FALSE)
 
-devtools::load_all("~/Repos/mgx.tools/")
+library(mgx.tools) # devtools::install_github("jorondo1/mgx.tools")
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/tax_glom2.R')
 source('https://raw.githubusercontent.com/jorondo1/misc_scripts/refs/heads/main/community_functions.R')
 
