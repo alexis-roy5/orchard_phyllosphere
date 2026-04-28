@@ -25,3 +25,5 @@ ILL_pipelines/
 .Rproj.user
 .Rapp.history
 *.html
+.positai
+*.pdf
