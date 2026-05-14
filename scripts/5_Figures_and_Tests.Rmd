@@ -216,8 +216,8 @@ length(which(pcoa.df.9$practice=="Conventional"))
     scale_color_manual(values= c("black","black"))+
     scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
     scale_size_manual(values=c(3,3,3,3))+ 
-    scale_fill_manual(name = "Practices", values = fill_practice)+
-    theme(legend.position = c(1, 1),
+    scale_fill_manual(name = "Management", values = fill_practice)+
+    theme(legend.position = c(.95, .95),
           legend.justification = c(1, 1),
           legend.direction = "horizontal",
           legend.background = element_rect(fill="white",
@@ -432,14 +432,17 @@ Plot numbers correspond to the subset numbers
    # Set the points size
    scale_size_manual(values=c(3,3,3))+ 
    # Set point filling color
-   scale_fill_manual(name = "Practices", values = fill_practice)+
+   scale_fill_manual(name = "Management", values = fill_practice)+
    # Adjust legend parameters
    theme(
-     legend.position = c(1,1),
+     legend.position = c(.95,.95),
      legend.justification = c(1,1),
-     legend.background = element_rect(fill="white",
-                                      size=0.5, linetype="solid", 
-                                      colour ="black"),
+     legend.background = element_rect(
+       fill="white",
+       size=0.5, linetype="solid", 
+       colour ="black"),
+     legend.text = element_text(size = 12),
+     legend.title = element_text(size = 14),
      axis.title = element_text(size = 16))+
    # Change shape legend
    guides(
@@ -459,9 +462,9 @@ color_practice <- c("black", "black")
 plot6 <-pcoa.df.6 %>% 
   ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
   geom_point(size = 2.5) +
-  scale_shape_manual(name = "Practices", values = c(21,21), aes(size = c(3, 0.1)))+
+  scale_shape_manual(name = "Management", values = c(21,21), aes(size = c(3, 0.1)))+
   scale_color_manual(values = color_practice)+
-  scale_fill_manual(name = "Practices", values = fill_practice)+
+  scale_fill_manual(name = "Management", values = fill_practice)+
   labs(x = paste("PCo1:", 100*eig6[1], "%"),
        y = paste("PCo2:", 100*eig6[2], "%")) +
   theme_bw()+
@@ -481,9 +484,9 @@ plot6 <-pcoa.df.6 %>%
 plot7 <-pcoa.df.7 %>% 
   ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
   geom_point(size=2.5) +
-  scale_shape_manual(name = "Practices", values = c(22,22))+
+  scale_shape_manual(name = "Management", values = c(22,22))+
   scale_color_manual(values = color_practice)+
-  scale_fill_manual(name = "Practices", values = fill_practice)+
+  scale_fill_manual(name = "Management", values = fill_practice)+
   labs(x = paste("PCo1:", 100*eig7[1], "%"),
        y = paste("PCo2:", 100*eig7[2], "%")) +
   theme_bw()+
@@ -500,9 +503,9 @@ plot7 <-pcoa.df.7 %>%
 plot8 <-pcoa.df.8 %>% 
   ggplot(aes(x = PCo1, y = PCo2, colour = practice, fill = practice, shape = practice)) +
   geom_point(size=2.5) +
-  scale_shape_manual(name = "Practices", values = c(24,24))+
+  scale_shape_manual(name = "Management", values = c(24,24))+
   scale_color_manual(values = color_practice)+
-  scale_fill_manual(name = "Practices", values = fill_practice)+
+  scale_fill_manual(name = "Management", values = fill_practice)+
   labs(x = paste("PCo1:", 100*eig8[1], "%"),
        y = paste("PCo2:", 100*eig8[2], "%")) +
   theme_bw()+
@@ -831,7 +834,7 @@ plot.diversity <- ggplot(meta.leaf, aes(practice, alphadiv))+ # What we want to 
     aes(fill = practice), 
     alpha = 1, width = 0.2, position = position_identity(), outliers = FALSE)+
   # Colors according to the cultivar
-  scale_fill_manual(name = "Practice", values = fill_practice)+ 
+  scale_fill_manual(name = "Management", values = fill_practice)+ 
   # Seperate the plot according to the site and cultivar
   facet_wrap(~time)+
   guides(alpha = "none")+ # Remove size legend
@@ -1001,7 +1004,7 @@ length(which(pcoa.df.10$practice=="Conventional"))
     scale_color_manual(values= c("black","black"))+
     scale_shape_manual(name = "Sites", values = c(21,22,23,24))+
     scale_size_manual(values=c(3,3,3,3))+ 
-    scale_fill_manual(name = "Practices", values = fill_practice)+
+    scale_fill_manual(name = "Management", values = fill_practice)+
     theme(
       legend.position = c(1,1),
       legend.justification = c(1,1),
@@ -1195,7 +1198,7 @@ length(which(pcoa.df.2$practice=="Organic" & pcoa.df.2$time == "August"))
     scale_color_manual(values= c("black","black","black","black","black","black"))+
     scale_shape_manual(name = "Time", values = c(21,22,24))+
     scale_size_manual(values=c(3,3,3))+ 
-    scale_fill_manual(name = "Practices", values = fill_practice)+
+    scale_fill_manual(name = "Management", values = fill_practice)+
     theme(legend.position = c(1,1),
           legend.justification = c(1,1),
           legend.background = element_rect(fill="white",
@@ -1416,7 +1419,7 @@ plot.diversity5 <- ggplot(meta.leaf2, aes(time, alphadiv))+ # What we want to pl
     axis.text = element_text(size = 14))+ # Axis text
   ylab("Shannon Index")+ # Y axis labels
   ylim(0,6.5)+
-stat_pvalue_manual(stat.test.all2, step.group.by = "code", y.position = 5.5, step.increase = 0.1, hide.ns = T);plot.diversity5
+  stat_pvalue_manual(stat.test.all2, step.group.by = "code", y.position = 5.5, step.increase = 0.1, hide.ns = T);plot.diversity5
 ```
 
 ```{r}
