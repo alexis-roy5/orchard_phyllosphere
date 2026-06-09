@@ -9,4 +9,4 @@ Samples taken on the leaves and flowers of multiple apple trees in the Eastern t
 Amplicon sequencing of ITS gene and ASV processing using DADA2.
 
 ## Preprint
-Manuscript in Revision. Current version available at https://www.biorxiv.org/content/10.1101/2025.09.25.678622v2
+Manuscript in Revision. Current version available at https://www.biorxiv.org/content/10.1101/2025.09.25.678622
